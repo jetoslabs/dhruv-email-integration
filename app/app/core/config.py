@@ -2,7 +2,7 @@ from pydantic import BaseSettings
 
 
 class Settings(BaseSettings):
-    pass
+    API_V1_STR = "v1"
 
 
 settings = Settings()

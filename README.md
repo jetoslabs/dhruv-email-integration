@@ -6,3 +6,6 @@ a. recevied b. sent
 received - return ‘from email’, subject line’, ‘immutable_id’
 2. save email in correspondance table
 columns - immuatlbe id, bkg no, quote no, account code (which is client id), body, attachment
+
+
+

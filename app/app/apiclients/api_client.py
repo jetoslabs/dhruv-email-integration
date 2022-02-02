@@ -1,6 +1,4 @@
 import asyncio
-from typing import Tuple
-
 import aiohttp
 from aiohttp import ClientResponse
 from async_timeout import timeout

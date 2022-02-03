@@ -7,5 +7,7 @@ manages interaction with o365
 #### 2. save email in correspondance table
 - columns - immuatlbe id, bkg no, quote no, account code (which is client id), body, attachment
 
-
+# Identity
+#### client secret variation 
+Reference repo: https://github.com/Azure-Samples/ms-identity-python-daemon/tree/master/1-Call-MsGraph-WithSecret#register-the-client-app-daemon-console
 

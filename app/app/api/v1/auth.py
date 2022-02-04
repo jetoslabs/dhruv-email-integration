@@ -1,16 +1,18 @@
-# from O365 import FileSystemTokenBackend, Account
 from fastapi import APIRouter
+
+from app.core.identity import get_confidential_client_application, get_access_token, get_config
 
 router = APIRouter()
 
 
-# @router.get("/")
-# def read_root(client_id: str, client_secert: str):
-#     # credentials = ('ee711872-3b83-46a4-a681-aff01ff4bdab', 'Utq7Q~i5IHQCyONc2uHIg-ZhNZSAlZ~k54rI9')
-#     credentials = (client_id, client_secert)
-#     token_backend = FileSystemTokenBackend(token_path='my_folder', token_filename='my_token.txt')
-#     account = Account(credentials, token_backend=token_backend)
-#     globalAccount = account
-#     if account.authenticate(scopes=['mailbox', 'mailbox_shared', 'address_book', 'address_book']):
-#         return {"Authenticated !"}
-#     return {"Hello": "World"}
+@router.get("/token")
+def get_token(tenant: str = "manaliorg"):
+    config = get_config(tenant)
+    client_app = get_confidential_client_application(config)
+    token = get_access_token(config, client_app)
+    return token
+
+
+@router.get("/callback")
+async def callback():
+    return "callback"

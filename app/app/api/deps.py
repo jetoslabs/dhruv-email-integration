@@ -1,10 +1,11 @@
-# from O365 import Account, FileSystemTokenBackend
+import json
 
-def auth(client_id: str, client_secret: str):
-# def auth(client_id: str, client_secret: str) -> Account:
-    # credentials = (client_id, client_secret)
-    # token_backend = FileSystemTokenBackend(token_path='my_folder', token_filename='my_token.txt')
-    # account = Account(credentials, token_backend=token_backend)
-    # print('Authenticated!')
-    # return account
-    pass
+from app.core.identity import Config, get_confidential_client_application, get_access_token
+
+
+def get_token(tenant: str):
+    config_dict = json.load(open('../parameters.json'))[tenant]
+    config = Config(**config_dict)
+    client_app = get_confidential_client_application(config)
+    token = get_access_token(config, client_app)
+    return token

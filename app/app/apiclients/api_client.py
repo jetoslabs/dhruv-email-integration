@@ -6,9 +6,10 @@ from loguru import logger
 
 
 class ApiClient:
-    def __init__(self, method: str, url: str, timeout_sec: int = 5, retries: int = 1):
+    def __init__(self, method: str, url: str, headers=None, *, timeout_sec: int = 5, retries: int = 1):
         self.method = method
         self.url = url
+        self.headers = headers
         self.timeout_sec = timeout_sec
         self.retries = retries
 
@@ -19,8 +20,8 @@ class ApiClient:
         """
         async with timeout(self.timeout_sec) as cm:
             async with aiohttp.ClientSession() as session:
-                async with session.request(method=self.method, url=self.url) as response:
-                    return response, await response.text()
+                async with session.request(method=self.method, url=self.url, headers=self.headers) as response:
+                    return response, await response.json()
 
     async def retryable_call(self) -> tuple[ClientResponse, str]:
         """Retries http_call on timeout error
@@ -38,3 +39,8 @@ class ApiClient:
                 last_error = e
                 logger.bind(error=e).error(f"TimeoutError.. retrying.. {i+1}/{retries}")
         raise last_error
+
+    @staticmethod
+    def get_headers(token):
+        headers = {'Authorization': 'Bearer ' + token['access_token']}
+        return headers

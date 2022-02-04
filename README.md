@@ -10,4 +10,4 @@ manages interaction with o365
 # Identity
 #### client secret variation 
 Reference repo: https://github.com/Azure-Samples/ms-identity-python-daemon/tree/master/1-Call-MsGraph-WithSecret#register-the-client-app-daemon-console
-
+reference repo : https://docs.microsoft.com/en-us/graph/auth-v2-service

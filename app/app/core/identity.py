@@ -24,6 +24,7 @@ def get_config(tenant) -> Config:
 
 
 def get_confidential_client_application(config) -> ConfidentialClientApplication:
+    # TODO: make ConfidentialClientApplication long-lived (should be 1 for each tenant)
     # Create a preferably long-lived app instance which maintains a token cache.
     app: ConfidentialClientApplication = msal.ConfidentialClientApplication(
         config.client_id,

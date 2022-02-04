@@ -6,10 +6,11 @@ from loguru import logger
 
 
 class ApiClient:
-    def __init__(self, method: str, url: str, headers=None, *, timeout_sec: int = 5, retries: int = 1):
+    def __init__(self, method: str, url: str, headers=None, data=None, *, timeout_sec: int = 5, retries: int = 1):
         self.method = method
         self.url = url
         self.headers = headers
+        self.data = data
         self.timeout_sec = timeout_sec
         self.retries = retries
 
@@ -20,7 +21,16 @@ class ApiClient:
         """
         async with timeout(self.timeout_sec) as cm:
             async with aiohttp.ClientSession() as session:
-                async with session.request(method=self.method, url=self.url, headers=self.headers) as response:
+                async with session.request(
+                        method=self.method,
+                        url=self.url,
+                        headers=self.headers,
+                        data=self.data
+                ) as response:
+                    logger.bind(response=response).info("ApiClient call")
+                    if response.content_type == "text/html":
+                        data = await response.text()
+                        return response, data
                     return response, await response.json()
 
     async def retryable_call(self) -> tuple[ClientResponse, str]:
@@ -41,6 +51,9 @@ class ApiClient:
         raise last_error
 
     @staticmethod
-    def get_headers(token):
-        headers = {'Authorization': 'Bearer ' + token['access_token']}
+    def get_headers(token, content_type: str = "application/json"):
+        headers = {
+            'Authorization': 'Bearer ' + token['access_token'],
+            # 'content-type': content_type
+        }
         return headers

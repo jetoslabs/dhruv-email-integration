@@ -74,4 +74,4 @@ async def run():
 
 @router.get("/load_endpoints_ms")
 async def load_endpoints_ms():
-    return await MsEndpointsHelper.load_endpoints_ms("../configuration/endpoints_ms.json")
+    return await MsEndpointsHelper._load_endpoints_ms("../configuration/endpoints_ms.json")

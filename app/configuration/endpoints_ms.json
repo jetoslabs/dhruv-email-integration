@@ -1,11 +1,17 @@
 {
   "base_url": "https://graph.microsoft.com/v1.0",
   "endpoints": {
+    "user:list": {
+      "application_permissions" : ["User.Read.All", "User.ReadWrite.All", "Directory.Read.All", "Directory.ReadWrite.All"],
+      "request_method" : "get",
+      "request_url": "/users",
+      "request_params": {}
+    },
     "user:get": {
       "application_permissions" : ["User.Read.All", "User.ReadWrite.All", "Directory.Read.All", "Directory.ReadWrite.All"],
       "request_method" : "get",
-      "request_url": "/users/{id}",
-      "request_params": {"id": "<user_id>"}
+      "request_url": "/users/{user_id}",
+      "request_params": {"user_id": "<user_id>"}
     },
     "message:list": {
       "application_permissions" : ["Mail.ReadBasic.All", "Mail.Read", "Mail.ReadWrite"],

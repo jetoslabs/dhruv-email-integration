@@ -36,6 +36,7 @@ def get_ms_auth_config(tenant: str) -> MsAuthConfig:
     return config
 
 
+# TODO: move var - this is one of the many vars for global store
 ms_auth_configs = load_ms_auth_configs("../configuration/parameters.json")
 
 

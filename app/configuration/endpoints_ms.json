@@ -1,0 +1,35 @@
+{
+  "base_url": "https://graph.microsoft.com/v1.0",
+  "endpoints": {
+    "user:get": {
+      "application_permissions" : ["User.Read.All", "User.ReadWrite.All", "Directory.Read.All", "Directory.ReadWrite.All"],
+      "request_method" : "get",
+      "request_url": "/users/{id}",
+      "request_params": {"id": "<user_id>"}
+    },
+    "message:list": {
+      "application_permissions" : ["Mail.ReadBasic.All", "Mail.Read", "Mail.ReadWrite"],
+      "request_method" : "get",
+      "request_url": "/users/{id}/messages",
+      "request_params": {"id": "<user_id>"}
+    },
+    "message:delta" : {
+      "application_permissions" : ["Mail.ReadBasic.All" , "Mail.Read", "Mail.ReadWrite"],
+      "request_method" : "get",
+      "request_url": "/users/{user_id}/mailFolders/{mailfolder_id}/messages/delta",
+      "request_params": {"user_id": "<user_id>", "mailfolder_id": "<mailfolder_id>"}
+    },
+    "message:get" : {
+      "application_permissions" : ["Mail.ReadBasic.All", "Mail.Read"],
+      "request_method" : "get",
+      "request_url": "/users/{id}/messages/{message_id}",
+      "request_params": {"id": "<id>", "message_id": "<message_id>"}
+    },
+    "message:get:mime" : {
+      "application_permissions" : ["Mail.ReadBasic.All", "Mail.Read"],
+      "request_method" : "get",
+      "request_url": "/users/{id}/messages/{message_id}/$value",
+      "request_params": {"id": "<id>", "message_id": "<message_id>"}
+    }
+  }
+}

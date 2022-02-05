@@ -9,6 +9,8 @@ from loguru import logger
 
 from app.api.deps import get_token
 from app.apiclients.api_client import ApiClient
+from app.apiclients.endpoint import MsEndpointsHelper
+from app.core import config
 from app.core.identity import get_confidential_client_application, get_access_token, Config, \
     get_config_and_confidential_client_application_and_access_token
 
@@ -68,3 +70,8 @@ async def run():
         print(result.get("error"))
         print(result.get("error_description"))
         print(result.get("correlation_id"))  # You may need this when reporting a bug
+
+
+@router.get("/load_endpoints_ms")
+async def load_endpoints_ms():
+    return await MsEndpointsHelper.load_endpoints_ms("../configuration/endpoints_ms.json")

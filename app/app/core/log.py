@@ -3,7 +3,7 @@ import uuid
 
 from loguru import logger
 
-from app.core.config import settings
+from app.core.setting import settings
 
 
 def setup_logger():
@@ -24,7 +24,7 @@ def setup_logger():
                    serialize=settings.LOG_SERIALIZE)
 
 
-setup_logger()
+# setup_logger()
 
 
 async def generate_trace_id() -> uuid.UUID:

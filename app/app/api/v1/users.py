@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from app.api.endpoint import Endpoint
 from app.apiclients.api_client import ApiClient
 from app.apiclients.endpoint_ms import endpoints_ms, MsEndpointsHelper, MsEndpointHelper
-from app.core.identity import get_config_and_confidential_client_application_and_access_token
+from app.core.auth import get_config_and_confidential_client_application_and_access_token
 
 router = APIRouter()
 

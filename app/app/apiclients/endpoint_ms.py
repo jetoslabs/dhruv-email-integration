@@ -35,6 +35,9 @@ class MsEndpointsHelper:
         except FileNotFoundError as e:
             logger.bind(filepath=filepath).error("cannot load endpoint_ms")
             raise e
+        except Exception as e:
+            logger.bind(filepath=filepath).error("cannot load endpoint_ms")
+            raise e
 
     @staticmethod
     def get_endpoint(endpoint_name: str, ms_endpoints: MsEndpoints) -> MsEndpoint:

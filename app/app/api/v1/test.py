@@ -9,9 +9,10 @@ from loguru import logger
 
 from app.api.deps import get_token
 from app.apiclients.api_client import ApiClient
+from app.apiclients.aws_client import AWSClientHelper
 from app.apiclients.endpoint_ms import MsEndpointsHelper
 from app.core import config
-from app.core.identity import get_confidential_client_application, get_access_token, Config, \
+from app.core.auth import get_confidential_client_application, get_access_token, Config, \
     get_config_and_confidential_client_application_and_access_token
 
 router = APIRouter()
@@ -75,3 +76,8 @@ async def run():
 @router.get("/load_endpoints_ms")
 async def load_endpoints_ms():
     return await MsEndpointsHelper._load_endpoints_ms("../configuration/endpoints_ms.json")
+
+
+@router.get("/load_aws_config")
+async def load_aws_config():
+    return await AWSClientHelper.load_config("../configuration/config.yml")

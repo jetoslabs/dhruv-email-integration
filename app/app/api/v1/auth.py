@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.core.identity import get_confidential_client_application, get_access_token, get_config
+from app.core.auth import get_confidential_client_application, get_access_token, get_config
 
 router = APIRouter()
 

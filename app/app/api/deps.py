@@ -1,6 +1,6 @@
 import json
 
-from app.core.identity import Config, get_confidential_client_application, get_access_token
+from app.core.auth import Config, get_confidential_client_application, get_access_token
 
 
 def get_token(tenant: str):

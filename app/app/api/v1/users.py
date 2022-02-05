@@ -30,8 +30,8 @@ async def get_users(tenant: str, user_id: str):
     if "access_token" in token:
         # ms graph api - https://docs.microsoft.com/en-us/graph/api/user-get?view=graph-rest-1.0&tabs=http
         endpoint = MsEndpointsHelper.get_endpoint("user:get", endpoints_ms)
+        # update the endpoint request_params
         endpoint.request_params["user_id"] = user_id
-        # We can get url from endpoint as is. This is because this endpoint url is simple get
         url = MsEndpointHelper.form_url(endpoint)
         response, data = await ApiClient('get', url, headers=ApiClient.get_headers(token)).retryable_call()
         return data

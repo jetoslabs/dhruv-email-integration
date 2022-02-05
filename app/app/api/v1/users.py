@@ -24,7 +24,7 @@ async def get_users(tenant: str):
 
 
 @router.get("/{user_id}")
-async def get_users(tenant: str, user_id: str):
+async def get_user(tenant: str, user_id: str):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         # ms graph api - https://docs.microsoft.com/en-us/graph/api/user-get?view=graph-rest-1.0&tabs=http

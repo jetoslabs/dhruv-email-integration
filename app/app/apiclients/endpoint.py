@@ -7,7 +7,7 @@ from pydantic import BaseModel
 class MsEndpoint(BaseModel):
     application_permissions: list
     request_method: str
-    request_url: str
+    request_path_template: str
     request_params: dict
 
 
@@ -19,7 +19,7 @@ class MsEndpoints(BaseModel):
 class MsEndpointHelper:
     @staticmethod
     def form_url(endpoint: MsEndpoint):
-        result_url = "" + endpoints_ms.base_url + endpoint.request_url
+        result_url = "" + endpoints_ms.base_url + endpoint.request_path_template
         for param_name, param_value in endpoint.request_params.items():
             result_url = result_url.replace("{"+param_name+"}", param_value)
         return result_url

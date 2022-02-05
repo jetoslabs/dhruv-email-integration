@@ -4,7 +4,7 @@ from app.core.auth import MsAuthConfig, get_confidential_client_application, get
 
 
 def get_token(tenant: str):
-    config_dict = json.load(open('../parameters.json'))[tenant]
+    config_dict = json.load(open('../configuration/ms_auth_configs.json'))[tenant]
     config = MsAuthConfig(**config_dict)
     client_app = get_confidential_client_application(config)
     token = get_access_token(config, client_app)

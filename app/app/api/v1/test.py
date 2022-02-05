@@ -32,7 +32,7 @@ async def run(tenant: str):
 
 @router.get("/")
 async def run():
-    config = json.load(open('../parameters.json'))
+    config = json.load(open('../configuration/ms_auth_configs.json'))
     config = config["manaliorg"]
 
     # Create a preferably long-lived app instance which maintains a token cache.

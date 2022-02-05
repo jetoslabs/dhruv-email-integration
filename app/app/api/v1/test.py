@@ -9,7 +9,7 @@ from loguru import logger
 
 from app.api.deps import get_token
 from app.apiclients.api_client import ApiClient
-from app.apiclients.endpoint import MsEndpointsHelper
+from app.apiclients.endpoint_ms import MsEndpointsHelper
 from app.core import config
 from app.core.identity import get_confidential_client_application, get_access_token, Config, \
     get_config_and_confidential_client_application_and_access_token

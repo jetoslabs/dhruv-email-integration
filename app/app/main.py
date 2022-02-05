@@ -23,6 +23,8 @@ async def startup_event():
     setup_logger()
     # TODO: setup ConfidentialClientApplication
     # TODO: setup boto3 (s3) session
+    # ms_auth_configs
+    # endpoints_ms
 
 
 @app.on_event("shutdown")

@@ -12,8 +12,7 @@ from app.apiclients.api_client import ApiClient
 from app.apiclients.aws_client import AWSClientHelper
 from app.apiclients.endpoint_ms import MsEndpointsHelper
 from app.core import config
-from app.core.auth import get_confidential_client_application, get_access_token, Config, \
-    get_config_and_confidential_client_application_and_access_token
+from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
 
 router = APIRouter()
 
@@ -26,7 +25,7 @@ async def wait_late():
 
 @router.get("/x")
 async def run(tenant: str):
-    config, client_app, token = get_config_and_confidential_client_application_and_access_token(tenant)
+    config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     response, data = await ApiClient('get', config.endpoint, headers=ApiClient.get_headers(token)).retryable_call()
     return data
 

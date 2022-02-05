@@ -1,16 +1,15 @@
 from fastapi import APIRouter
 
-from app.api.endpoint import Endpoint
 from app.apiclients.api_client import ApiClient
 from app.apiclients.endpoint_ms import endpoints_ms, MsEndpointsHelper, MsEndpointHelper
-from app.core.auth import get_config_and_confidential_client_application_and_access_token
+from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
 
 router = APIRouter()
 
 
 @router.get("/")
 async def get_users(tenant: str):
-    config, client_app, token = get_config_and_confidential_client_application_and_access_token(tenant)
+    config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         # ms graph api - https://docs.microsoft.com/en-us/graph/api/user-list?view=graph-rest-1.0&tabs=http
         endpoint = MsEndpointsHelper.get_endpoint("user:list", endpoints_ms)
@@ -26,7 +25,7 @@ async def get_users(tenant: str):
 
 @router.get("/{user_id}")
 async def get_users(tenant: str, user_id: str):
-    config, client_app, token = get_config_and_confidential_client_application_and_access_token(tenant)
+    config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         # ms graph api - https://docs.microsoft.com/en-us/graph/api/user-get?view=graph-rest-1.0&tabs=http
         endpoint = MsEndpointsHelper.get_endpoint("user:get", endpoints_ms)

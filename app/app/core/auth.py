@@ -1,5 +1,6 @@
 #  MS Identity Platform
 import json
+import sys
 from typing import Any, Union, Tuple, Dict
 
 import msal
@@ -8,7 +9,7 @@ from msal import ConfidentialClientApplication
 from pydantic import BaseModel
 
 
-class Config(BaseModel):
+class MsAuthConfig(BaseModel):
     authority: str
     client_id: str
     scope: list
@@ -16,11 +17,26 @@ class Config(BaseModel):
     endpoint: str
 
 
-def get_config(tenant) -> Config:
-    config_dict: dict = json.load(open('../parameters.json'))
-    config_dict = config_dict.get(tenant)
-    config = Config(**config_dict)
+class MsAuthConfigs(BaseModel):
+    configs: dict[str, MsAuthConfig]
+
+
+def load_ms_auth_configs(filepath: str) -> MsAuthConfigs:
+    try:
+        configs_dict: dict = json.load(open(filepath))
+        configs = MsAuthConfigs(**configs_dict)
+        return configs
+    except Exception as e:
+        logger.bind(error=e).error("Error while loading ms_auth_configs... Exiting...")
+        sys.exit(1)
+
+
+def get_ms_auth_config(tenant: str) -> MsAuthConfig:
+    config = ms_auth_configs.configs[tenant]
     return config
+
+
+ms_auth_configs = load_ms_auth_configs("../configuration/parameters.json")
 
 
 def get_confidential_client_application(config) -> ConfidentialClientApplication:
@@ -37,7 +53,7 @@ def get_confidential_client_application(config) -> ConfidentialClientApplication
     return app
 
 
-def get_access_token(config: Config, app: ConfidentialClientApplication):
+def get_access_token(config: MsAuthConfig, app: ConfidentialClientApplication):
     # The pattern to acquire a token looks like this.
     result = None
 
@@ -53,9 +69,9 @@ def get_access_token(config: Config, app: ConfidentialClientApplication):
     return result
 
 
-def get_config_and_confidential_client_application_and_access_token(tenant) -> Union[
-    tuple[Config, ConfidentialClientApplication, Any], tuple[None, None, None]]:
-    config = get_config(tenant)
+def get_auth_config_and_confidential_client_application_and_access_token(tenant) -> Union[
+    tuple[MsAuthConfig, ConfidentialClientApplication, Any], tuple[None, None, None]]:
+    config = get_ms_auth_config(tenant)
     if config is not None:
         client_app = get_confidential_client_application(config)
         token = get_access_token(config, client_app)

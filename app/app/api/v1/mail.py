@@ -4,14 +4,14 @@ from fastapi import APIRouter
 
 from app.api.endpoint import Endpoint
 from app.apiclients.api_client import ApiClient
-from app.core.auth import get_config_and_confidential_client_application_and_access_token
+from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
 
 router = APIRouter()
 
 
 @router.get("/listMail")
 async def list_mail(tenant: str, user_id: str):
-    config, client_app, token = get_config_and_confidential_client_application_and_access_token(tenant)
+    config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         api_client = ApiClient(
             'get',
@@ -53,7 +53,7 @@ async def send_mail(tenant="manaliorg"):
       },
     }
     data = json.dumps(data)
-    config, client_app, token = get_config_and_confidential_client_application_and_access_token(tenant)
+    config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         response, data = await ApiClient(
             'post',

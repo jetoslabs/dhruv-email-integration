@@ -1,0 +1,11 @@
+tenant: "SYSTEM"
+
+# AWS
+aws_access_key_id: "AKIATFMMZO74Y2V4LEUK"
+aws_access_secret: "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"
+aws_region: "eu-west-1"
+aws_output: "json"
+# AWS S3
+s3_bucket: "o365-manager"
+s3_default_bucket: "junk"
+

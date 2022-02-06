@@ -1,18 +1,16 @@
 import json
 import time
-from typing import Optional
+from io import BytesIO
 
-import requests
 from fastapi import APIRouter
 import msal
 from loguru import logger
 
-from app.api.deps import get_token
 from app.apiclients.api_client import ApiClient
-from app.apiclients.aws_client import AWSClientHelper
+from app.apiclients.aws_client import AWSClientHelper, boto3_session
 from app.apiclients.endpoint_ms import MsEndpointsHelper
-from app.core import config
 from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
+from app.core.config import GlobalConfigHelper, global_config
 
 router = APIRouter()
 
@@ -74,9 +72,18 @@ async def run():
 
 @router.get("/load_endpoints_ms")
 async def load_endpoints_ms():
-    return await MsEndpointsHelper._load_endpoints_ms("../configuration/endpoints_ms.json")
+    return MsEndpointsHelper._load_endpoints_ms("../configuration/endpoints_ms.json")
 
 
-@router.get("/load_aws_config")
-async def load_aws_config():
-    return await AWSClientHelper.load_config("../configuration/config.yml")
+@router.get("/load_global_config")
+async def load_global_config():
+    return GlobalConfigHelper._load_global_config("../configuration/config.yml")
+
+
+@router.get("/save_to_s3")
+async def save_to_s3():
+    return await AWSClientHelper.save_to_s3(
+        boto3_session,
+        BytesIO(b'okokok'),
+        global_config.s3_root_bucket,
+        global_config.s3_default_object_prefix+"okokok.txt")

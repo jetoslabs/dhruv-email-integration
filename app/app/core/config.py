@@ -12,14 +12,14 @@ class GlobalConfig(BaseModel):
     aws_region: str
     aws_output: str
     s3_root_bucket: str
-    s3_default_bucket: str
+    s3_default_object_prefix: str
 
 
 class GlobalConfigHelper:
     @staticmethod
-    def _load_global_config() -> GlobalConfig:
+    def _load_global_config(filepath: str) -> GlobalConfig:
         try:
-            with open("../configuration/global_config.yml") as file:
+            with open(filepath) as file:
                 global_config_dict = yaml.safe_load(file)
                 config = GlobalConfig(**global_config_dict)
                 return config
@@ -28,4 +28,5 @@ class GlobalConfigHelper:
             raise e
 
 
-global_config = GlobalConfigHelper._load_global_config()
+# TODO: move var
+global_config = GlobalConfigHelper._load_global_config("../configuration/global_config.yml")

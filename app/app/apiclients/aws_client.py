@@ -19,14 +19,15 @@ class AWSClientHelper:
         )
 
     @staticmethod
-    async def save_to_s3(session: boto3.Session, file_obj: io.BytesIO, bucket_name: str, object_name: str) -> bool:
+    async def save_to_s3(session: boto3.Session, file_obj: io.BytesIO, bucket_name: str, object_name: str) -> str:
         s3_client = session.client('s3')
         try:
             s3_client.upload_fileobj(file_obj, bucket_name, object_name)
         except ClientError as e:
             logger.bind(error=e).error("Error while save_to_s3")
             raise e
-        return await AWSClientHelper.check_in_s3(session, bucket_name, object_name)
+        if await AWSClientHelper.check_in_s3(session, bucket_name, object_name):
+            return f"{bucket_name}/{object_name}"
 
     @staticmethod
     async def check_in_s3(session: boto3.Session, bucket_name: str, object_name: str) -> bool:

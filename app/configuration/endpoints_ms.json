@@ -32,9 +32,21 @@
       "request_params": {"id": "<id>", "message_id": "<message_id>"}
     },
     "message:get:mime" : {
-      "application_permissions" : ["Mail.ReadBasic.All", "Mail.Read"],
+      "application_permissions" : ["Mail.Read"],
       "request_method" : "get",
       "request_path_template": "/users/{id}/messages/{message_id}/$value",
+      "request_params": {"id": "<id>", "message_id": "<message_id>"}
+    },
+    "message:list:attachment" : {
+      "application_permissions" : ["Mail.Read"],
+      "request_method" : "get",
+      "request_path_template": "/users/{id}/messages/{message_id}/attachments",
+      "request_params": {"id": "<id>", "message_id": "<message_id>"}
+    },
+    "message:save:attachment" : {
+      "application_permissions" : [""],
+      "request_method" : "get",
+      "request_path_template": "/users/{id}/messages/{message_id}/attachments/save",
       "request_params": {"id": "<id>", "message_id": "<message_id>"}
     }
   }

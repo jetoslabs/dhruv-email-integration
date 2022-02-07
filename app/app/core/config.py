@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 class GlobalConfig(BaseModel):
     tenant: str
+    db_url: str
     aws_access_key_id: str
     aws_access_secret: str
     aws_region: str

@@ -1,5 +1,8 @@
 tenant: "SYSTEM"
 
+# DB
+# pymssql
+db_url: "dialect+driver://user:password@host:port/database"
 # AWS
 aws_access_key_id: "key"
 aws_access_secret: "secret"

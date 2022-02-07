@@ -1,4 +1,3 @@
-import json
 import base64
 from io import BytesIO
 
@@ -35,23 +34,6 @@ async def list_mail(tenant: str, id: str):
         print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
-@router.get("/{id}/messages/{message_id}/attachments")
-async def list_message_attachments(tenant: str, id: str, message_id: str):
-    config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
-    if "access_token" in token:
-        endpoint = MsEndpointsHelper.get_endpoint("message:list:attachment", endpoints_ms)
-        endpoint.request_params["id"] = id
-        endpoint.request_params["message_id"] = message_id
-        url = MsEndpointHelper.form_url(endpoint)
-        api_client = ApiClient(endpoint.request_method, url, headers=ApiClient.get_headers(token), timeout_sec=3000)
-        response, data = await api_client.retryable_call()
-        return data
-    else:
-        print(token.get("error"))
-        print(token.get("error_description"))
-        print(token.get("correlation_id"))  # You may need this when reporting a bug
-
-
 @router.get("/{id}/messages/{message_id}")
 async def get_message(tenant: str, id: str, message_id: str):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
@@ -68,11 +50,29 @@ async def get_message(tenant: str, id: str, message_id: str):
         print(token.get("error_description"))
         print(token.get("correlation_id"))  # You may need this when reporting a bug
 
+
 @router.get("/{id}/messages/{message_id}/$value")
 async def get_message_mime(tenant: str, id: str, message_id: str):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         endpoint = MsEndpointsHelper.get_endpoint("message:get:mime", endpoints_ms)
+        endpoint.request_params["id"] = id
+        endpoint.request_params["message_id"] = message_id
+        url = MsEndpointHelper.form_url(endpoint)
+        api_client = ApiClient(endpoint.request_method, url, headers=ApiClient.get_headers(token), timeout_sec=3000)
+        response, data = await api_client.retryable_call()
+        return data
+    else:
+        print(token.get("error"))
+        print(token.get("error_description"))
+        print(token.get("correlation_id"))  # You may need this when reporting a bug
+
+
+@router.get("/{id}/messages/{message_id}/attachments")
+async def list_message_attachments(tenant: str, id: str, message_id: str):
+    config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
+    if "access_token" in token:
+        endpoint = MsEndpointsHelper.get_endpoint("message:list:attachment", endpoints_ms)
         endpoint.request_params["id"] = id
         endpoint.request_params["message_id"] = message_id
         url = MsEndpointHelper.form_url(endpoint)

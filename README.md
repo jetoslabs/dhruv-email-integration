@@ -16,4 +16,4 @@ manages interaction with o365
 # Database
 #### SqlAlchemy
 - ![sqlalchemy-orm-tutorial-for-python-developers](https://auth0.com/blog/sqlalchemy-orm-tutorial-for-python-developers/)
-- 
+- ![Use SQLAlchemy as Dependency vs. Middleware vs. scoped_session](https://github.com/tiangolo/fastapi/issues/726#issuecomment-557687526)

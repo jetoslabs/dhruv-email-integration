@@ -17,7 +17,8 @@
       "application_permissions" : ["Mail.ReadBasic.All", "Mail.Read", "Mail.ReadWrite"],
       "request_method" : "get",
       "request_path_template": "/users/{id}/messages",
-      "request_params": {"id": "<user_id>"}
+      "request_params": {"id": "<user_id>"},
+      "optional_query_params": {"$filter": "<filter expressions>", "$orderby": "<orderby expressions>"}
     },
     "message:get" : {
       "application_permissions" : ["Mail.ReadBasic.All", "Mail.Read"],

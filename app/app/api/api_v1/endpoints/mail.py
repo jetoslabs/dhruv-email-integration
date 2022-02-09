@@ -8,17 +8,20 @@ from app.apiclients.aws_client import AWSClientHelper, boto3_session
 from app.apiclients.endpoint_ms import MsEndpointsHelper, endpoints_ms, MsEndpointHelper
 from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
 from app.core.config import global_config
+from app.schemas.schema_ms_graph import MessagesSchema, MessageResponseSchema, AttachmentsSchema
 
 router = APIRouter()
 
 
-@router.get("/{id}/messages")
-async def list_mail(tenant: str, id: str):
+@router.get("/{id}/messages", response_model=MessagesSchema)
+async def list_mail(tenant: str, id: str, filter: str = "") -> MessagesSchema:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         endpoint = MsEndpointsHelper.get_endpoint("message:list", endpoints_ms)
         endpoint.request_params['id'] = id
+        if filter != "": endpoint.optional_query_params[f"$filter"] = filter
         url = MsEndpointHelper.form_url(endpoint)
+        # url = f"{url}?$filter=receivedDateTime gt 2022-02-07T02:56:37Z"
 
         api_client = ApiClient(
             endpoint.request_method,
@@ -27,15 +30,15 @@ async def list_mail(tenant: str, id: str):
             timeout_sec=30
         )
         response, data = await api_client.retryable_call()
-        return data
+        return MessagesSchema(**data) if type(data) == 'dict' else data
     else:
         print(token.get("error"))
         print(token.get("error_description"))
         print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
-@router.get("/{id}/messages/{message_id}")
-async def get_message(tenant: str, id: str, message_id: str):
+@router.get("/{id}/messages/{message_id}", response_model=MessageResponseSchema)
+async def get_message(tenant: str, id: str, message_id: str) -> MessageResponseSchema:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         endpoint = MsEndpointsHelper.get_endpoint("message:get", endpoints_ms)
@@ -44,32 +47,32 @@ async def get_message(tenant: str, id: str, message_id: str):
         url = MsEndpointHelper.form_url(endpoint)
         api_client = ApiClient(endpoint.request_method, url, headers=ApiClient.get_headers(token), timeout_sec=3000)
         response, data = await api_client.retryable_call()
-        return data
+        return MessageResponseSchema(**data) if type(data) == 'dict' else data
     else:
         print(token.get("error"))
         print(token.get("error_description"))
         print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
-@router.get("/{id}/messages/{message_id}/$value")
-async def get_message_mime(tenant: str, id: str, message_id: str):
-    config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
-    if "access_token" in token:
-        endpoint = MsEndpointsHelper.get_endpoint("message:get:mime", endpoints_ms)
-        endpoint.request_params["id"] = id
-        endpoint.request_params["message_id"] = message_id
-        url = MsEndpointHelper.form_url(endpoint)
-        api_client = ApiClient(endpoint.request_method, url, headers=ApiClient.get_headers(token), timeout_sec=3000)
-        response, data = await api_client.retryable_call()
-        return data
-    else:
-        print(token.get("error"))
-        print(token.get("error_description"))
-        print(token.get("correlation_id"))  # You may need this when reporting a bug
+# @router.get("/{id}/messages/{message_id}/$value")
+# async def get_message_mime(tenant: str, id: str, message_id: str):
+#     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
+#     if "access_token" in token:
+#         endpoint = MsEndpointsHelper.get_endpoint("message:get:mime", endpoints_ms)
+#         endpoint.request_params["id"] = id
+#         endpoint.request_params["message_id"] = message_id
+#         url = MsEndpointHelper.form_url(endpoint)
+#         api_client = ApiClient(endpoint.request_method, url, headers=ApiClient.get_headers(token), timeout_sec=3000)
+#         response, data = await api_client.retryable_call()
+#         return data
+#     else:
+#         print(token.get("error"))
+#         print(token.get("error_description"))
+#         print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
-@router.get("/{id}/messages/{message_id}/attachments")
-async def list_message_attachments(tenant: str, id: str, message_id: str):
+@router.get("/{id}/messages/{message_id}/attachments", response_model=AttachmentsSchema)
+async def list_message_attachments(tenant: str, id: str, message_id: str) -> AttachmentsSchema:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         endpoint = MsEndpointsHelper.get_endpoint("message:list:attachment", endpoints_ms)
@@ -78,7 +81,7 @@ async def list_message_attachments(tenant: str, id: str, message_id: str):
         url = MsEndpointHelper.form_url(endpoint)
         api_client = ApiClient(endpoint.request_method, url, headers=ApiClient.get_headers(token), timeout_sec=3000)
         response, data = await api_client.retryable_call()
-        return data
+        return AttachmentsSchema(**data) if type(data) == 'dict' else data
     else:
         print(token.get("error"))
         print(token.get("error_description"))

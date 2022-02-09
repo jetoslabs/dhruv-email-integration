@@ -10,6 +10,7 @@ class MsEndpoint(BaseModel):
     request_method: str
     request_path_template: str
     request_params: dict
+    optional_query_params: dict = {}
 
 
 class MsEndpoints(BaseModel):
@@ -23,6 +24,9 @@ class MsEndpointHelper:
         result_url = "" + endpoints_ms.base_url + endpoint.request_path_template
         for param_name, param_value in endpoint.request_params.items():
             result_url = result_url.replace("{"+param_name+"}", param_value)
+        for param_name, param_value in endpoint.optional_query_params.items():
+            if '<' not in param_value and '>' not in param_value:
+                result_url = f"{result_url}?{param_name}={param_value}"
         return result_url
 
 

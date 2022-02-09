@@ -3,13 +3,13 @@ from fastapi import FastAPI
 from loguru import logger
 
 from app.core.log import setup_logger
-from app.core.setting import settings
-from app.api.v1 import api_v1
+from app.core.settings import settings
+from app.api.api_v1 import api
 
 
 def create_app():
     fastapi = FastAPI()
-    fastapi.include_router(router=api_v1.router, prefix=f"/{settings.API_V1_STR}")
+    fastapi.include_router(router=api.router, prefix=f"/{settings.API_V1_STR}")
     return fastapi
 
 

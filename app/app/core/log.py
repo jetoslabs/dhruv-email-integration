@@ -3,7 +3,7 @@ import uuid
 
 from loguru import logger
 
-from app.core.setting import settings
+from app.core.settings import settings
 
 
 def setup_logger():

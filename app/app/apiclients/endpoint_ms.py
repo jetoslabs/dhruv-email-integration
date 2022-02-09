@@ -2,6 +2,7 @@ import json
 
 from loguru import logger
 from pydantic import BaseModel
+from typing import Dict
 
 
 class MsEndpoint(BaseModel):
@@ -13,7 +14,7 @@ class MsEndpoint(BaseModel):
 
 class MsEndpoints(BaseModel):
     base_url: str
-    endpoints: dict[str, MsEndpoint]
+    endpoints: Dict[str, MsEndpoint]
 
 
 class MsEndpointHelper:

@@ -16,7 +16,7 @@ class ApiClient:
         self.timeout_sec = timeout_sec
         self.retries = retries
 
-    async def call(self) -> Union[tuple[ClientResponse, str], tuple[ClientResponse, bytes], tuple[ClientResponse, Any]]:
+    async def call(self) -> Union[Tuple[ClientResponse, str], Tuple[ClientResponse, bytes], Tuple[ClientResponse, Any]]:
         """Returns data in response body
 
         raise: asyncio.exceptions.TimeoutError (raised implicitly by async_timeout library)
@@ -38,7 +38,7 @@ class ApiClient:
                         return response, await response.json()
                     return response, await response.text()
 
-    async def retryable_call(self) -> tuple[ClientResponse, str]:
+    async def retryable_call(self) -> Tuple[ClientResponse, str]:
         """Retries http_call on timeout error
 
         raise: asyncio.exceptions.TimeoutError

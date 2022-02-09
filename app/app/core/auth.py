@@ -18,7 +18,7 @@ class MsAuthConfig(BaseModel):
 
 
 class MsAuthConfigs(BaseModel):
-    configs: dict[str, MsAuthConfig]
+    configs: Dict[str, MsAuthConfig]
 
 
 def load_ms_auth_configs(filepath: str) -> MsAuthConfigs:
@@ -71,7 +71,7 @@ def get_access_token(config: MsAuthConfig, app: ConfidentialClientApplication):
 
 
 def get_auth_config_and_confidential_client_application_and_access_token(tenant) -> Union[
-    tuple[MsAuthConfig, ConfidentialClientApplication, Any], tuple[None, None, None]]:
+    Tuple[MsAuthConfig, ConfidentialClientApplication, Any], Tuple[None, None, None]]:
     config = get_ms_auth_config(tenant)
     if config is not None:
         client_app = get_confidential_client_application(config)

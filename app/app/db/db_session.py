@@ -10,3 +10,4 @@ Session = sessionmaker(bind=engine)
 
 # create a Session
 db_session = Session()
+db_session.connection()

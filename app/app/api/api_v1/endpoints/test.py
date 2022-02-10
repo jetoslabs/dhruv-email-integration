@@ -11,6 +11,7 @@ from app.apiclients.aws_client import AWSClientHelper, boto3_session
 from app.apiclients.endpoint_ms import MsEndpointsHelper
 from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
 from app.core.config import GlobalConfigHelper, global_config
+from app.initial_data import init
 
 router = APIRouter()
 
@@ -87,3 +88,11 @@ async def save_to_s3():
         BytesIO(b'okokok'),
         global_config.s3_root_bucket,
         global_config.s3_default_object_prefix+"okokok.txt")
+
+
+@router.get("/init_db")
+async def init_db():
+    logger.info("Creating initial data")
+    init()
+    logger.info("Initial data created")
+    return "done"

@@ -11,4 +11,4 @@ class Correspondence(Base):
     body = Column('body', String(32))
     from_address = Column('from_address', String(32))
     to_address = Column('to_address', String(32))
-    correspondence_id = relationship("CorrespondenceId", uselist=False, back_populates="correspondence")
+    # correspondence_id = relationship("CorrespondenceId", uselist=False, back_populates="correspondence")

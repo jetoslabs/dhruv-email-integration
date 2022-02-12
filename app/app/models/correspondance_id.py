@@ -8,4 +8,4 @@ class CorrespondenceId(Base):
     __tablename__ = 'correspondence_ids'
     id = Column(Integer, primary_key=True)
     message_id = Column('message_id', String(32))
-    correspondence = relationship("Correspondence", uselist=False, back_populates="correspondence_id")
+    # correspondence = relationship("Correspondence", uselist=False, back_populates="correspondence_id")

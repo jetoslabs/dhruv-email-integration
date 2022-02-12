@@ -1,0 +1,13 @@
+tenant: "SYSTEM"
+
+# DB
+db_url: "dialect+driver://user:password@host:port/database"
+# AWS
+aws_access_key_id: "key"
+aws_access_secret: "secret"
+aws_region: "region"
+aws_output: "json_or_something_else"
+# AWS S3
+s3_bucket: "app root folder link"
+s3_default_bucket: "app default folder link"
+

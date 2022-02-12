@@ -6,8 +6,8 @@ from app.core.config import global_config
 engine = create_engine(global_config.db_url, pool_pre_ping=True)
 
 # create a configured "Session" class
-Session = sessionmaker(bind=engine)
+SessionLocal = sessionmaker(bind=engine)
 
 # create a Session
-db_session = Session()
+db_session = SessionLocal()
 db_session.connection()

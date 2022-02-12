@@ -1,4 +1,7 @@
 .idea
+**/.DS_Store
+
 **/global_config.yml
 **/ms_auth_configs.json
 
+**/__pycache__/

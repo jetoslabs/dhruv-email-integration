@@ -1,2 +1,7 @@
 .idea
-/app/tests/configuration/
+/app/configuration/global_config.yml
+/app/configuration/ms_auth_configs.json
+
+
+/app/tests/configuration/global_config.yml
+/app/tests/configuration/ms_auth_configs.json

@@ -14,6 +14,7 @@ class CorrespondenceIdUpdate(CorrespondenceId):
 
 
 class Correspondence(BaseModel):
+    message_id: str
     subject: str
     body: str
     attachments: str

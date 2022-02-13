@@ -7,6 +7,7 @@ from app.db.base_class import Base
 class Correspondence(Base):
     __tablename__ = 'correspondence'
     id = Column(Integer, primary_key=True)
+    message_id = Column('message_id', String(32))
     subject = Column('subject', String(32))
     body = Column('body', String(32))
     attachments = Column('attachments', String(32))

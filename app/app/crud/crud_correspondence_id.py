@@ -18,7 +18,10 @@ class CRUDCorrespondenceId(CRUDBase[CorrespondenceId, CorrespondenceIdCreate, Co
         db.refresh(db_obj)
         return db_obj
 
-    def get_get_multi_by_message_id(
+    def get_by_message_id(self, db: Session, *, message_id: str) -> CorrespondenceId:
+        return db.query(self.model).filter(self.model.message_id == message_id).first()
+
+    def get_multi_by_message_id(
             self, db: Session, *, message_id: str, skip: int = 0, limit: int = 0
     ) -> List[CorrespondenceId]:
         return db.query(self.model)\

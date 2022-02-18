@@ -5,7 +5,8 @@
       "application_permissions" : ["User.Read.All", "User.ReadWrite.All", "Directory.Read.All", "Directory.ReadWrite.All"],
       "request_method" : "get",
       "request_path_template": "/users",
-      "request_params": {}
+      "request_params": {},
+      "optional_query_params": {"$top": "<no of rows>"}
     },
     "user:get": {
       "application_permissions" : ["User.Read.All", "User.ReadWrite.All", "Directory.Read.All", "Directory.ReadWrite.All"],
@@ -18,7 +19,7 @@
       "request_method" : "get",
       "request_path_template": "/users/{id}/messages",
       "request_params": {"id": "<user_id>"},
-      "optional_query_params": {"$filter": "<filter expressions>", "$orderby": "<orderby expressions>"}
+      "optional_query_params": {"$top": "<no of rows>", "$filter": "<filter expressions>", "$orderby": "<orderby expressions>"}
     },
     "message:get" : {
       "application_permissions" : ["Mail.ReadBasic.All", "Mail.Read"],

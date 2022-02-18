@@ -1,5 +1,6 @@
 import base64
 from io import BytesIO
+from typing import List
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -21,12 +22,13 @@ router = APIRouter()
 
 
 @router.get("/{id}/messages", response_model=MessagesSchema)
-async def list_mail(tenant: str, id: str, filter: str = "") -> MessagesSchema:
+async def get_messages(tenant: str, id: str, top: int = 5, filter: str = "") -> MessagesSchema:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         endpoint = MsEndpointsHelper.get_endpoint("message:list", endpoints_ms)
         endpoint.request_params['id'] = id
-        if filter != "": endpoint.optional_query_params[f"$filter"] = filter
+        endpoint.optional_query_params.top = str(top) if 0 < top <= 1000 else str(10)
+        if filter != "": endpoint.optional_query_params.filter = filter
         url = MsEndpointHelper.form_url(endpoint)
         # url = f"{url}?$filter=receivedDateTime gt 2022-02-07T02:56:37Z"
 
@@ -37,7 +39,7 @@ async def list_mail(tenant: str, id: str, filter: str = "") -> MessagesSchema:
             timeout_sec=30
         )
         response, data = await api_client.retryable_call()
-        return MessagesSchema(**data) if type(data) == 'dict' else data
+        return MessagesSchema(**data) if type(data) == dict else data
     else:
         print(token.get("error"))
         print(token.get("error_description"))
@@ -95,10 +97,10 @@ async def list_message_attachments(tenant: str, id: str, message_id: str) -> Att
         print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
-@router.get("/{id}/messages/{message_id}/attachments/save")
+@router.get("/{id}/messages/{message_id}/attachments/save", response_model=List[str])
 async def save_message_attachments(
         tenant: str, id: str, message_id: str, db: Session = Depends(deps.get_db)
-):
+) -> List[str]:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         links = []
@@ -143,6 +145,38 @@ async def save_message(tenant: str, id: str, message_id: str, db: Session = Depe
             )
         )
         return new_row
+    else:
+        print(token.get("error"))
+        print(token.get("error_description"))
+        print(token.get("correlation_id"))  # You may need this when reporting a bug
+
+
+@router.get("/{id}/save/messages")
+async def save_all_messages(tenant: str, id: str, db: Session = Depends(deps.get_db)):
+    config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
+    if "access_token" in token:
+        messages_schema: MessagesSchema = await get_messages(tenant, id)
+        messages = messages_schema.value
+
+        correspondence_id_create_schemas = []
+        for message in messages:
+            correspondence_id_create_schemas.append(CorrespondenceIdCreate(message_id=message.id))
+        correspondence_id_rows = CRUDCorrespondenceId(CorrespondenceId).create_multi(db, obj_ins=correspondence_id_create_schemas)
+
+        correspondence_create_schemas = []
+        for message in messages:
+            correspondence_create_schemas.append(
+                CorrespondenceCreate(
+                    message_id=message.id,
+                    subject=message.subject,
+                    body=message.body.content,
+                    attachments=",".join(await save_message_attachments(tenant, id, message.id, db)),
+                    from_address=message.from_email.emailAddress.address,
+                    to_address=",".join([r.emailAddress.address for r in message.toRecipients])
+                )
+            )
+        correspondence_rows = CRUDCorrespondence(Correspondence).create_multi(db, obj_ins=correspondence_create_schemas)
+        return correspondence_rows
     else:
         print(token.get("error"))
         print(token.get("error_description"))

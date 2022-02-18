@@ -8,6 +8,10 @@ class ODataContextSchema(BaseModel):
     odata_context: str = Field(None, alias="@odata.context")
 
 
+class ODataNextLinkSchema(BaseModel):
+    odata_nextLink: str = Field(None, alias="@odata.nextLink")
+
+
 class UserSchema(BaseModel):
     businessPhones: Optional[List[str]] = None
     displayName: Optional[str]
@@ -89,6 +93,7 @@ class MessageResponseSchema(MessageSchema, ODataContextSchema):
 class MessagesSchema(BaseModel):
     odata_context: Optional[str] = Field(None, alias="@odata.context")
     value: Optional[List[MessageSchema]]
+    odata_nextLink: Optional[str] = Field(None, alias="@odata.nextLink")
 
 
 class AttachmentSchema(BaseModel):
@@ -105,5 +110,5 @@ class AttachmentSchema(BaseModel):
     contentBytes: str
 
 
-class AttachmentsSchema(ODataContextSchema):
+class AttachmentsSchema(ODataNextLinkSchema, ODataContextSchema):
     value: Optional[List[AttachmentSchema]]

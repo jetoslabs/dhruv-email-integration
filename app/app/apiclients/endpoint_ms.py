@@ -1,8 +1,14 @@
 import json
 
 from loguru import logger
-from pydantic import BaseModel
-from typing import Dict
+from pydantic import BaseModel, Field
+from typing import Dict, Optional
+
+
+class OptionalQueryParams(BaseModel):
+    top: Optional[str] = Field(None, alias="$top")
+    filter: Optional[str] = Field(None, alias="$filter")
+    orderby: Optional[str] = Field(None, alias="$orderby")
 
 
 class MsEndpoint(BaseModel):
@@ -10,7 +16,7 @@ class MsEndpoint(BaseModel):
     request_method: str
     request_path_template: str
     request_params: dict
-    optional_query_params: dict = {}
+    optional_query_params: Optional[OptionalQueryParams]
 
 
 class MsEndpoints(BaseModel):
@@ -22,11 +28,13 @@ class MsEndpointHelper:
     @staticmethod
     def form_url(endpoint: MsEndpoint):
         result_url = "" + endpoints_ms.base_url + endpoint.request_path_template
-        for param_name, param_value in endpoint.request_params.items():
-            result_url = result_url.replace("{"+param_name+"}", param_value)
-        for param_name, param_value in endpoint.optional_query_params.items():
-            if '<' not in param_value and '>' not in param_value:
-                result_url = f"{result_url}?{param_name}={param_value}"
+        if endpoint.request_params:
+            for param_name, param_value in endpoint.request_params.items():
+                result_url = result_url.replace("{"+param_name+"}", param_value)
+        if endpoint.optional_query_params:
+            for param_name, param_value in endpoint.optional_query_params.dict().items():
+                if param_value and '<' not in param_value and '>' not in param_value:
+                    result_url = f"{result_url}?{param_name}={param_value}"
         return result_url
 
 

@@ -6,6 +6,8 @@ from pydantic import BaseModel
 from app.db.base_class import Base
 from sqlalchemy.orm import Session
 
+from app.models import CorrespondenceId
+
 ModelType = TypeVar("ModelType", bound=Base)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
@@ -36,6 +38,18 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db.commit()
         db.refresh(db_obj)
         return db_obj
+
+    def create_multi(self, db: Session, *, obj_ins: List[CreateSchemaType]) -> List[ModelType]:
+        db_objs: List[CorrespondenceId] = []
+        for obj_in in obj_ins:
+            obj_in_data = jsonable_encoder(obj_in)
+            db_obj = self.model(**obj_in_data)  # type: ignore
+            db_objs.append(db_obj)
+        for db_obj in db_objs:
+            db.add(db_obj)
+            db.commit()
+            db.refresh(db_obj)
+        return db_objs
 
     def update(self, db: Session, *, db_obj: ModelType, obj_in: Union[UpdateSchemaType, Dict[str, Any]]) -> ModelType:
         obj_data = jsonable_encoder(db_obj)

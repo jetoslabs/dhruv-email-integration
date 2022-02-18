@@ -1,0 +1,55 @@
+{
+  "base_url": "https://graph.microsoft.com/v1.0",
+  "endpoints": {
+    "user:list": {
+      "application_permissions" : ["User.Read.All", "User.ReadWrite.All", "Directory.Read.All", "Directory.ReadWrite.All"],
+      "request_method" : "get",
+      "request_path_template": "/users",
+      "request_params": {},
+      "optional_query_params": {"$top": "<no of rows>"}
+    },
+    "user:get": {
+      "application_permissions" : ["User.Read.All", "User.ReadWrite.All", "Directory.Read.All", "Directory.ReadWrite.All"],
+      "request_method" : "get",
+      "request_path_template": "/users/{user_id}",
+      "request_params": {"user_id": "<user_id>"}
+    },
+    "message:list": {
+      "application_permissions" : ["Mail.ReadBasic.All", "Mail.Read", "Mail.ReadWrite"],
+      "request_method" : "get",
+      "request_path_template": "/users/{id}/messages",
+      "request_params": {"id": "<user_id>"},
+      "optional_query_params": {"$top": "<no of rows>", "$filter": "<filter expressions>", "$orderby": "<orderby expressions>"}
+    },
+    "message:get" : {
+      "application_permissions" : ["Mail.ReadBasic.All", "Mail.Read"],
+      "request_method" : "get",
+      "request_path_template": "/users/{id}/messages/{message_id}",
+      "request_params": {"id": "<id>", "message_id": "<message_id>"}
+    },
+    "message:delta" : {
+      "application_permissions" : ["Mail.ReadBasic.All" , "Mail.Read", "Mail.ReadWrite"],
+      "request_method" : "get",
+      "request_path_template": "/users/{user_id}/mailFolders/{mailfolder_id}/messages/delta",
+      "request_params": {"user_id": "<user_id>", "mailfolder_id": "<mailfolder_id>"}
+    },
+    "message:get:mime" : {
+      "application_permissions" : ["Mail.Read"],
+      "request_method" : "get",
+      "request_path_template": "/users/{id}/messages/{message_id}/$value",
+      "request_params": {"id": "<id>", "message_id": "<message_id>"}
+    },
+    "message:list:attachment" : {
+      "application_permissions" : ["Mail.Read"],
+      "request_method" : "get",
+      "request_path_template": "/users/{id}/messages/{message_id}/attachments",
+      "request_params": {"id": "<id>", "message_id": "<message_id>"}
+    },
+    "message:save:attachment" : {
+      "application_permissions" : [""],
+      "request_method" : "get",
+      "request_path_template": "/users/{id}/messages/{message_id}/attachments/save",
+      "request_params": {"id": "<id>", "message_id": "<message_id>"}
+    }
+  }
+}

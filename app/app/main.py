@@ -2,13 +2,14 @@ import uvicorn
 from fastapi import FastAPI
 from loguru import logger
 
-from app.core.config import settings
-from app.api.v1 import api_v1
+from app.core.log import setup_logger
+from app.core.settings import settings
+from app.api.api_v1 import api
 
 
 def create_app():
     fastapi = FastAPI()
-    fastapi.include_router(router=api_v1.router, prefix=f"/{settings.API_V1_STR}")
+    fastapi.include_router(router=api.router, prefix=f"/{settings.API_V1_STR}")
     return fastapi
 
 
@@ -18,10 +19,16 @@ app = create_app()
 @app.on_event("startup")
 async def startup_event():
     logger.bind().info("startup event ...")
+    # setup logger before everything
+    setup_logger()
+    # TODO: setup ConfidentialClientApplication
+    # TODO: setup boto3 (s3) session
+    # ms_auth_configs
+    # endpoints_ms
 
 
 @app.on_event("shutdown")
-async def startup_event():
+async def shutdown_event():
     logger.bind().info("shutdown event ...")
 
 if __name__ == "__main__":

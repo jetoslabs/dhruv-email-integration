@@ -1,4 +1,6 @@
 import asyncio
+from typing import Union, Tuple, Any
+
 import aiohttp
 from aiohttp import ClientResponse
 from async_timeout import timeout
@@ -14,7 +16,7 @@ class ApiClient:
         self.timeout_sec = timeout_sec
         self.retries = retries
 
-    async def call(self) -> tuple[ClientResponse, str]:
+    async def call(self) -> Union[Tuple[ClientResponse, str], Tuple[ClientResponse, bytes], Tuple[ClientResponse, dict], Tuple[ClientResponse, Any]]:
         """Returns data in response body
 
         raise: asyncio.exceptions.TimeoutError (raised implicitly by async_timeout library)
@@ -29,11 +31,14 @@ class ApiClient:
                 ) as response:
                     logger.bind(response=response).info("ApiClient call")
                     if response.content_type == "text/html":
-                        data = await response.text()
-                        return response, data
-                    return response, await response.json()
+                        return response, await response.text()
+                    elif response.content_type == "text/plain":
+                        return response, await response.content.read()
+                    elif response.content_type == "application/json":
+                        return response, await response.json()
+                    return response, await response.text()
 
-    async def retryable_call(self) -> tuple[ClientResponse, str]:
+    async def retryable_call(self) -> Union[Tuple[ClientResponse, str], Tuple[ClientResponse, bytes], Tuple[ClientResponse, dict], Tuple[ClientResponse, Any]]:
         """Retries http_call on timeout error
 
         raise: asyncio.exceptions.TimeoutError

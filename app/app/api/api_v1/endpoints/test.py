@@ -1,16 +1,17 @@
 import json
 import time
-from typing import Optional
+from io import BytesIO
 
-import requests
 from fastapi import APIRouter
 import msal
 from loguru import logger
 
-from app.api.deps import get_token
 from app.apiclients.api_client import ApiClient
-from app.core.identity import get_confidential_client_application, get_access_token, Config, \
-    get_config_and_confidential_client_application_and_access_token
+from app.apiclients.aws_client import AWSClientHelper, boto3_session
+from app.apiclients.endpoint_ms import MsEndpointsHelper
+from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
+from app.core.config import GlobalConfigHelper, global_config
+from app.initial_data import init
 
 router = APIRouter()
 
@@ -23,14 +24,14 @@ async def wait_late():
 
 @router.get("/x")
 async def run(tenant: str):
-    config, client_app, token = get_config_and_confidential_client_application_and_access_token(tenant)
+    config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     response, data = await ApiClient('get', config.endpoint, headers=ApiClient.get_headers(token)).retryable_call()
     return data
 
 
 @router.get("/")
 async def run():
-    config = json.load(open('../parameters.json'))
+    config = json.load(open('../configuration/ms_auth_configs.json'))
     config = config["manaliorg"]
 
     # Create a preferably long-lived app instance which maintains a token cache.
@@ -68,3 +69,30 @@ async def run():
         print(result.get("error"))
         print(result.get("error_description"))
         print(result.get("correlation_id"))  # You may need this when reporting a bug
+
+
+@router.get("/load_endpoints_ms")
+async def load_endpoints_ms():
+    return MsEndpointsHelper._load_endpoints_ms("../configuration/endpoints_ms.json")
+
+
+@router.get("/load_global_config")
+async def load_global_config():
+    return GlobalConfigHelper._load_global_config("../configuration/config.yml")
+
+
+@router.get("/save_to_s3")
+async def save_to_s3():
+    return await AWSClientHelper.save_to_s3(
+        boto3_session,
+        BytesIO(b'okokok'),
+        global_config.s3_root_bucket,
+        global_config.s3_default_object_prefix+"okokok.txt")
+
+
+@router.get("/init_db")
+async def init_db():
+    logger.info("Creating initial data")
+    init()
+    logger.info("Initial data created")
+    return "done"

@@ -9,5 +9,5 @@ engine = create_engine(global_config.db_url, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine)
 
 # create a Session
-db_session = SessionLocal()
-db_session.connection()
+# db_session = SessionLocal()
+# db_session.connection()

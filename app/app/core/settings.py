@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     HOST = "localhost"
     PORT = 8001
     APP_RELOAD = True
-    APP_WORKERS = 2
+    APP_WORKERS = 1
     API_V1_STR = "v1"
 
 

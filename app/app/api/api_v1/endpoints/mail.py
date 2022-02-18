@@ -1,13 +1,20 @@
 import base64
 from io import BytesIO
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
+from app.api import deps
 from app.apiclients.api_client import ApiClient
 from app.apiclients.aws_client import AWSClientHelper, boto3_session
 from app.apiclients.endpoint_ms import MsEndpointsHelper, endpoints_ms, MsEndpointHelper
+from app.controllers.mail import get_s3_path_from_ms_message_id
 from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
 from app.core.config import global_config
+from app.crud.crud_correspondence import CRUDCorrespondence
+from app.crud.crud_correspondence_id import CRUDCorrespondenceId
+from app.models import CorrespondenceId, Correspondence
+from app.schemas.schema_db import CorrespondenceIdCreate, CorrespondenceCreate
 from app.schemas.schema_ms_graph import MessagesSchema, MessageResponseSchema, AttachmentsSchema
 
 router = APIRouter()
@@ -47,7 +54,7 @@ async def get_message(tenant: str, id: str, message_id: str) -> MessageResponseS
         url = MsEndpointHelper.form_url(endpoint)
         api_client = ApiClient(endpoint.request_method, url, headers=ApiClient.get_headers(token), timeout_sec=3000)
         response, data = await api_client.retryable_call()
-        return MessageResponseSchema(**data) if type(data) == 'dict' else data
+        return MessageResponseSchema(**data) if type(data) == dict else data
     else:
         print(token.get("error"))
         print(token.get("error_description"))
@@ -89,9 +96,12 @@ async def list_message_attachments(tenant: str, id: str, message_id: str) -> Att
 
 
 @router.get("/{id}/messages/{message_id}/attachments/save")
-async def save_message_attachment(tenant: str, id: str, message_id: str):
+async def save_message_attachments(
+        tenant: str, id: str, message_id: str, db: Session = Depends(deps.get_db)
+):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
+        links = []
         data = await list_message_attachments(tenant, id, message_id)
         attachments: list = data["value"]
         for attachment in attachments:
@@ -99,7 +109,12 @@ async def save_message_attachment(tenant: str, id: str, message_id: str):
             content_b64 = attachment["contentBytes"]
             # contentBytes is base64 encoded str
             content = base64.b64decode(content_b64)
-            is_saved = await AWSClientHelper.save_to_s3(boto3_session, BytesIO(content), global_config.s3_root_bucket, filename)
+            s3_path = get_s3_path_from_ms_message_id(db, message_id)
+            saved_s3_path = await AWSClientHelper.save_to_s3(
+                boto3_session, BytesIO(content), global_config.s3_root_bucket, f"{s3_path}/{filename}"
+            )
+            links.append(saved_s3_path)
+        return links
 
     else:
         print(token.get("error"))
@@ -107,6 +122,31 @@ async def save_message_attachment(tenant: str, id: str, message_id: str):
         print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
+@router.get("/{id}/messages/{message_id}/save")
+async def save_message(tenant: str, id: str, message_id: str, db: Session = Depends(deps.get_db)):
+    config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
+    if "access_token" in token:
+        message: MessageResponseSchema = await get_message(tenant, id, message_id)
+        # save message to correspondenceId table
+        correspondence_id_record = CRUDCorrespondenceId(CorrespondenceId).create(
+            db, obj_in=CorrespondenceIdCreate(message_id=message_id)
+        )
+        # save message to Correspondence table
+        new_row = CRUDCorrespondence(Correspondence).create(
+            db, obj_in=CorrespondenceCreate(
+                message_id=message_id,
+                subject=message.subject,
+                body=message.body.content,
+                attachments=",".join(await save_message_attachments(tenant, id, message_id, db)),
+                from_address=message.from_email.emailAddress.address,
+                to_address=",".join([r.emailAddress.address for r in message.toRecipients])
+            )
+        )
+        return new_row
+    else:
+        print(token.get("error"))
+        print(token.get("error_description"))
+        print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
 # @router.post("/sendMail")

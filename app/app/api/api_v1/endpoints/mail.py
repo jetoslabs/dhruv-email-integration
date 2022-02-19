@@ -21,7 +21,7 @@ from app.schemas.schema_ms_graph import MessagesSchema, MessageResponseSchema, A
 router = APIRouter()
 
 
-@router.get("/{id}/messages", response_model=MessagesSchema)
+@router.get("/users/{id}/messages", response_model=MessagesSchema)
 async def get_messages(tenant: str, id: str, top: int = 5, filter: str = "") -> MessagesSchema:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
@@ -46,7 +46,7 @@ async def get_messages(tenant: str, id: str, top: int = 5, filter: str = "") -> 
         print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
-@router.get("/{id}/messages/{message_id}", response_model=MessageResponseSchema)
+@router.get("/users/{id}/messages/{message_id}", response_model=MessageResponseSchema)
 async def get_message(tenant: str, id: str, message_id: str) -> MessageResponseSchema:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
@@ -63,7 +63,7 @@ async def get_message(tenant: str, id: str, message_id: str) -> MessageResponseS
         print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
-# @router.get("/{id}/messages/{message_id}/$value")
+# @router.get("/users/{id}/messages/{message_id}/$value")
 # async def get_message_mime(tenant: str, id: str, message_id: str):
 #     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
 #     if "access_token" in token:
@@ -80,7 +80,7 @@ async def get_message(tenant: str, id: str, message_id: str) -> MessageResponseS
 #         print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
-@router.get("/{id}/messages/{message_id}/attachments", response_model=AttachmentsSchema)
+@router.get("/users/{id}/messages/{message_id}/attachments", response_model=AttachmentsSchema)
 async def list_message_attachments(tenant: str, id: str, message_id: str) -> AttachmentsSchema:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
@@ -97,7 +97,7 @@ async def list_message_attachments(tenant: str, id: str, message_id: str) -> Att
         print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
-@router.get("/{id}/messages/{message_id}/attachments/save", response_model=List[str])
+@router.get("/users/{id}/messages/{message_id}/attachments/save", response_model=List[str])
 async def save_message_attachments(
         tenant: str, id: str, message_id: str, db: Session = Depends(deps.get_db)
 ) -> List[str]:
@@ -124,7 +124,7 @@ async def save_message_attachments(
         print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
-@router.get("/{id}/messages/{message_id}/save")
+@router.get("/users/{id}/messages/{message_id}/save")
 async def save_message(tenant: str, id: str, message_id: str, db: Session = Depends(deps.get_db)):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
@@ -151,7 +151,7 @@ async def save_message(tenant: str, id: str, message_id: str, db: Session = Depe
         print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
-@router.get("/{id}/save/messages")
+@router.get("/users/{id}/save/messages")
 async def save_all_messages(tenant: str, id: str, db: Session = Depends(deps.get_db)):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
@@ -183,7 +183,7 @@ async def save_all_messages(tenant: str, id: str, db: Session = Depends(deps.get
         print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
-# @router.post("/sendMail")
+# @router.post("/users/sendMail")
 # async def send_mail(tenant="manaliorg"):
 #     data = {
 #       "message": {

@@ -8,7 +8,7 @@ from app.schemas.schema_ms_graph import UsersSchema, UserResponseSchema
 router = APIRouter()
 
 
-@router.get("/", response_model=UsersSchema)
+@router.get("/users/", response_model=UsersSchema)
 async def get_users(tenant: str) -> UsersSchema:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
@@ -24,7 +24,7 @@ async def get_users(tenant: str) -> UsersSchema:
         print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
-@router.get("/{user_id}", response_model=UserResponseSchema)
+@router.get("/users/{user_id}", response_model=UserResponseSchema)
 async def get_user(tenant: str, user_id: str) -> UserResponseSchema:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:

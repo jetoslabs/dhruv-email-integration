@@ -29,7 +29,7 @@ class ApiClient:
                         headers=self.headers,
                         data=self.data
                 ) as response:
-                    logger.bind(response=response).info("ApiClient call")
+                    # logger.bind(response=response).info("ApiClient call")
                     if response.content_type == "text/html":
                         return response, await response.text()
                     elif response.content_type == "text/plain":

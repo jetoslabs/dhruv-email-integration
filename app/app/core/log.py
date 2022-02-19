@@ -7,7 +7,7 @@ from app.core.settings import settings
 
 
 def setup_logger():
-    logger.bind().info("Setting up logger...")
+    logger.bind().info("Setting up logger")
     logger.remove()
     # prod mode
     if settings.LOG_SERIALIZE:

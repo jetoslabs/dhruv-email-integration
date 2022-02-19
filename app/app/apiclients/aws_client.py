@@ -11,7 +11,7 @@ class AWSClientHelper:
 
     @staticmethod
     def _build_boto3_session(aws_access_key_id: str, aws_access_secret: str, aws_region: str) -> boto3.Session:
-        logger.bind().info("Building boto3 session...")
+        logger.bind().info("Building boto3 session")
         return boto3.Session(
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_access_secret,

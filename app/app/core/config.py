@@ -25,7 +25,7 @@ class GlobalConfigHelper:
                 config = GlobalConfig(**global_config_dict)
                 return config
         except Exception as e:
-            logger.bind().error("Error while loading global_config... exiting...")
+            logger.bind().error("Error while loading global_config... exiting")
             raise e
 
 

@@ -50,6 +50,12 @@
       "request_method" : "get",
       "request_path_template": "/users/{id}/messages/{message_id}/attachments/save",
       "request_params": {"id": "<id>", "message_id": "<message_id>"}
+    },
+    "message:send" : {
+      "application_permissions" : ["Mail.Send"],
+      "request_method" : "post",
+      "request_path_template": "/users/{id}/sendMail",
+      "request_params": {"id": "<id>"}
     }
   }
 }

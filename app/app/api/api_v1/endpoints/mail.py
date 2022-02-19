@@ -1,9 +1,11 @@
 import base64
 from io import BytesIO
-from typing import List
+from typing import List, Tuple
 
+from aiohttp import ClientResponse
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from starlette.responses import JSONResponse
 
 from app.api import deps
 from app.apiclients.api_client import ApiClient
@@ -16,7 +18,8 @@ from app.crud.crud_correspondence import CRUDCorrespondence
 from app.crud.crud_correspondence_id import CRUDCorrespondenceId
 from app.models import CorrespondenceId, Correspondence
 from app.schemas.schema_db import CorrespondenceIdCreate, CorrespondenceCreate
-from app.schemas.schema_ms_graph import MessagesSchema, MessageResponseSchema, AttachmentsSchema
+from app.schemas.schema_ms_graph import MessagesSchema, MessageResponseSchema, AttachmentsSchema, \
+    SendMessageRequestSchema, CreateMessageSchema, MessageBodySchema, EmailAddressWrapperSchema, EmailAddressSchema
 
 router = APIRouter()
 
@@ -183,43 +186,46 @@ async def save_all_messages(tenant: str, id: str, db: Session = Depends(deps.get
         print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
-# @router.post("/users/sendMail")
-# async def send_mail(tenant="manaliorg"):
-#     data = {
-#       "message": {
-#         "subject": "Meet for lunch?",
-#         "body": {
-#           "contentType": "Text",
-#           "content": "The new cafeteria is open."
-#         },
-#         "toRecipients": [
-#           {
-#             "emailAddress": {
-#               "address": "toanuragjha@gmail.com"
-#             }
-#           }
-#         ],
-#         "ccRecipients": [
-#           {
-#             "emailAddress": {
-#               "address": "mmpatil34@gmail.com"
-#             }
-#           }
-#         ]
-#       },
-#     }
-#     data = json.dumps(data)
-#     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
-#     if "access_token" in token:
-#         response, data = await ApiClient(
-#             'post',
-#             str(Endpoint.send_mail.value).replace("{id}", "4557db1f-edc7-4c95-8874-0b5ca2fbb42e"),
-#             headers=ApiClient.get_headers(token),
-#             data=data,
-#             timeout_sec=3000
-#         ).retryable_call()
-#         return data
-#     else:
-#         print(token.get("error"))
-#         print(token.get("error_description"))
-#         print(token.get("correlation_id"))  # You may need this when reporting a bug
+@router.post("/users/{id}/sendMail", status_code=202)
+async def send_mail(tenant: str, id: str):
+    config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
+    if "access_token" in token:
+        message_to_send= SendMessageRequestSchema(
+            message=CreateMessageSchema(
+                subject="program mail send 2",
+                body=MessageBodySchema(
+                    contentType="HTML",
+                    content="okokok___okokok 2"
+                ),
+                toRecipients=[EmailAddressWrapperSchema(
+                    emailAddress=EmailAddressSchema(
+                        name="Adele Vance",
+                        address="AdeleV@26cfkx.onmicrosoft.com"
+                    )
+                )],
+                ccRecipients=[EmailAddressWrapperSchema(
+                    emailAddress=EmailAddressSchema(
+                        name="Adele Vance",
+                        address="AdeleV@26cfkx.onmicrosoft.com"
+                    )
+                )]
+            )
+        )
+
+        endpoint = MsEndpointsHelper.get_endpoint("message:send", endpoints_ms)
+        endpoint.request_params["id"] = id
+        url = MsEndpointHelper.form_url(endpoint)
+        api_client = ApiClient(
+            endpoint.request_method,
+            url,
+            headers=ApiClient.get_headers(token),
+            data=message_to_send.json(),
+            timeout_sec=3000)
+        api_client.headers['content-type'] = "application/json"
+        response_and_data: Tuple[ClientResponse, str] = await api_client.retryable_call()
+        response, data = response_and_data
+        return JSONResponse(status_code=response.status, content={"message": data})
+    else:
+        print(token.get("error"))
+        print(token.get("error_description"))
+        print(token.get("correlation_id"))  # You may need this when reporting a bug

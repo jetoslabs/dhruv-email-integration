@@ -112,3 +112,15 @@ class AttachmentSchema(BaseModel):
 
 class AttachmentsSchema(ODataNextLinkSchema, ODataContextSchema):
     value: Optional[List[AttachmentSchema]]
+
+
+class CreateMessageSchema(BaseModel):
+    subject: Optional[str]
+    body: Optional[MessageBodySchema]
+    toRecipients: List[EmailAddressWrapperSchema]
+    ccRecipients: Optional[List[EmailAddressWrapperSchema]]
+
+
+class SendMessageRequestSchema(BaseModel):
+    message: CreateMessageSchema
+    saveToSentItems: bool = True

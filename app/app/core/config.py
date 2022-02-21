@@ -1,4 +1,5 @@
 import json
+import os
 
 import yaml
 from loguru import logger
@@ -25,9 +26,11 @@ class GlobalConfigHelper:
                 config = GlobalConfig(**global_config_dict)
                 return config
         except Exception as e:
+            logger.bind().error(f"cwd={os.getcwd()}")
             logger.bind().error("Error while loading global_config... exiting")
             raise e
 
 
 # TODO: move var
-global_config = GlobalConfigHelper._load_global_config("../configuration/global_config.yml")
+# global_config = GlobalConfigHelper._load_global_config("../configuration/global_config.yml")
+global_config = GlobalConfigHelper._load_global_config("configuration/global_config.yml")

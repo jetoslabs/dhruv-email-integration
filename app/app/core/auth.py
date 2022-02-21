@@ -37,7 +37,8 @@ def get_ms_auth_config(tenant: str) -> MsAuthConfig:
 
 
 # TODO: move var - this is one of the many vars for global store
-ms_auth_configs = load_ms_auth_configs("../configuration/ms_auth_configs.json")
+# ms_auth_configs = load_ms_auth_configs("../configuration/ms_auth_configs.json")
+ms_auth_configs = load_ms_auth_configs("configuration/ms_auth_configs.json")
 
 
 def get_confidential_client_application(config) -> ConfidentialClientApplication:

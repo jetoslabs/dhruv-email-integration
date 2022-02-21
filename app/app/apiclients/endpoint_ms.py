@@ -64,4 +64,5 @@ class MsEndpointsHelper:
 
 
 # endpoints_ms # TODO: move
-endpoints_ms: MsEndpoints = MsEndpointsHelper._load_endpoints_ms("../configuration/endpoints_ms.json")
+# endpoints_ms: MsEndpoints = MsEndpointsHelper._load_endpoints_ms("../configuration/endpoints_ms.json")
+endpoints_ms: MsEndpoints = MsEndpointsHelper._load_endpoints_ms("configuration/endpoints_ms.json")

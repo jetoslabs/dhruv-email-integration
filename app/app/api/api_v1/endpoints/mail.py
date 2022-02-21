@@ -4,6 +4,7 @@ from typing import List, Tuple
 
 from aiohttp import ClientResponse
 from fastapi import APIRouter, Depends
+from loguru import logger
 from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse
 
@@ -104,27 +105,30 @@ async def list_message_attachments(tenant: str, id: str, message_id: str) -> Att
 async def save_message_attachments(
         tenant: str, id: str, message_id: str, db: Session = Depends(deps.get_db)
 ) -> List[str]:
-    config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
-    if "access_token" in token:
-        links = []
-        data = await list_message_attachments(tenant, id, message_id)
-        attachments: list = data["value"]
-        for attachment in attachments:
-            filename = attachment["name"]
-            content_b64 = attachment["contentBytes"]
-            # contentBytes is base64 encoded str
-            content = base64.b64decode(content_b64)
-            s3_path = get_s3_path_from_ms_message_id(db, message_id)
-            saved_s3_path = await AWSClientHelper.save_to_s3(
-                boto3_session, BytesIO(content), global_config.s3_root_bucket, f"{s3_path}/{filename}"
-            )
-            links.append(saved_s3_path)
-        return links
-
-    else:
-        print(token.get("error"))
-        print(token.get("error_description"))
-        print(token.get("correlation_id"))  # You may need this when reporting a bug
+        config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
+        if "access_token" in token:
+            links = []
+            data = await list_message_attachments(tenant, id, message_id)
+            attachments: list = data["value"]
+            for attachment in attachments:
+                if 'contentBytes' in attachment.keys():
+                    logger.bind(attachment=attachment).debug("attachment")
+                    filename = attachment["name"]
+                    content_b64 = attachment["contentBytes"]
+                    # contentBytes is base64 encoded str
+                    content = base64.b64decode(content_b64)
+                    s3_path = get_s3_path_from_ms_message_id(db, message_id)
+                    saved_s3_path = await AWSClientHelper.save_to_s3(
+                        boto3_session, BytesIO(content), global_config.s3_root_bucket, f"{s3_path}/{filename}"
+                    )
+                    links.append(saved_s3_path)
+                else:
+                    logger.bind(attachment=attachment).error("Fit for DLQ")
+            return links
+        else:
+            print(token.get("error"))
+            print(token.get("error_description"))
+            print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
 @router.get("/users/{id}/messages/{message_id}/save")

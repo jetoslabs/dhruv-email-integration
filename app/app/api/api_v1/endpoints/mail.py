@@ -1,5 +1,4 @@
 import base64
-import json
 from io import BytesIO
 from typing import List, Tuple
 
@@ -21,7 +20,8 @@ from app.crud.crud_correspondence_id import CRUDCorrespondenceId
 from app.models import CorrespondenceId, Correspondence
 from app.schemas.schema_db import CorrespondenceIdCreate, CorrespondenceCreate
 from app.schemas.schema_ms_graph import MessagesSchema, MessageResponseSchema, AttachmentsSchema, \
-    SendMessageRequestSchema, CreateMessageSchema, MessageBodySchema, EmailAddressWrapperSchema, EmailAddressSchema
+    SendMessageRequestSchema, CreateMessageSchema, MessageBodySchema, EmailAddressWrapperSchema, EmailAddressSchema, \
+    AttachmentInCreateMessage
 
 router = APIRouter()
 
@@ -66,23 +66,6 @@ async def get_message(tenant: str, id: str, message_id: str) -> MessageResponseS
         print(token.get("error"))
         print(token.get("error_description"))
         print(token.get("correlation_id"))  # You may need this when reporting a bug
-
-
-# @router.get("/users/{id}/messages/{message_id}/$value")
-# async def get_message_mime(tenant: str, id: str, message_id: str):
-#     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
-#     if "access_token" in token:
-#         endpoint = MsEndpointsHelper.get_endpoint("message:get:mime", endpoints_ms)
-#         endpoint.request_params["id"] = id
-#         endpoint.request_params["message_id"] = message_id
-#         url = MsEndpointHelper.form_url(endpoint)
-#         api_client = ApiClient(endpoint.request_method, url, headers=ApiClient.get_headers(token), timeout_sec=3000)
-#         response, data = await api_client.retryable_call()
-#         return data
-#     else:
-#         print(token.get("error"))
-#         print(token.get("error_description"))
-#         print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
 @router.get("/users/{id}/messages/{message_id}/attachments", response_model=AttachmentsSchema)
@@ -172,8 +155,9 @@ async def save_all_messages(tenant: str, id: str, top: int = 5, filter="", db: S
         correspondence_id_create_schemas = []
         for message in messages:
             correspondence_id_create_schemas.append(CorrespondenceIdCreate(message_id=message.id))
-        correspondence_id_rows = CRUDCorrespondenceId(CorrespondenceId)\
-            .create_multi(db, obj_ins=correspondence_id_create_schemas)
+        correspondence_id_rows = CRUDCorrespondenceId(CorrespondenceId).create_multi(
+            db, obj_ins=correspondence_id_create_schemas
+        )
 
         correspondence_create_schemas = []
         for message in messages:
@@ -216,7 +200,15 @@ async def send_mail(tenant: str, id: str):
                         name="Adele Vance",
                         address="AdeleV@26cfkx.onmicrosoft.com"
                     )
-                )]
+                )],
+                attachments=[
+                    AttachmentInCreateMessage(
+                        odata_type="#microsoft.graph.fileAttachment",
+                        name="attachment.txt",
+                        contentType="text/plain",
+                        contentBytes="SGVsbG8gV29ybGQh"
+                    )
+                ]
             )
         )
 

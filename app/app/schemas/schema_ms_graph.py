@@ -114,11 +114,19 @@ class AttachmentsSchema(ODataNextLinkSchema, ODataContextSchema):
     value: Optional[List[AttachmentSchema]]
 
 
+class AttachmentInCreateMessage(BaseModel):
+    odata_type: str = Field(None, alias="@odata.type")
+    name: str
+    contentType: str
+    contentBytes: str
+
+
 class CreateMessageSchema(BaseModel):
     subject: Optional[str]
     body: Optional[MessageBodySchema]
     toRecipients: List[EmailAddressWrapperSchema]
     ccRecipients: Optional[List[EmailAddressWrapperSchema]]
+    attachments: Optional[List[AttachmentInCreateMessage]]
 
 
 class SendMessageRequestSchema(BaseModel):

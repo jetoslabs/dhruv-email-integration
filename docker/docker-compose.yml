@@ -1,4 +1,18 @@
-version: "3.2"
+version: "3.7"
+
+x-env: &env
+  # Logs
+  LOG_SERIALIZE: "False"
+  LOG_LEVEL: "DEBUG"
+  # App
+#  HOST: "localhost"
+#  PORT: 8080
+  APP_RELOAD: "True"
+  APP_WORKERS: 1
+  API_V1_STR: "v1"
+  # Configuration
+  CONFIGURATION_PATH: "../"
+
 services:
 
   msgraph-manager:
@@ -11,6 +25,8 @@ services:
       - ../app:/usr/src/o365-manager/app
     ports:
       - "80:80"
+    environment:
+      <<: *env
 
 
   sql-server-db:

@@ -1,9 +1,10 @@
 import base64
+import json
 from io import BytesIO
 from typing import List, Tuple
 
 from aiohttp import ClientResponse
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
 from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse
@@ -105,30 +106,30 @@ async def list_message_attachments(tenant: str, id: str, message_id: str) -> Att
 async def save_message_attachments(
         tenant: str, id: str, message_id: str, db: Session = Depends(deps.get_db)
 ) -> List[str]:
-        config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
-        if "access_token" in token:
-            links = []
-            data = await list_message_attachments(tenant, id, message_id)
-            attachments: list = data["value"]
-            for attachment in attachments:
-                if 'contentBytes' in attachment.keys():
-                    logger.bind(attachment=attachment).debug("attachment")
-                    filename = attachment["name"]
-                    content_b64 = attachment["contentBytes"]
-                    # contentBytes is base64 encoded str
-                    content = base64.b64decode(content_b64)
-                    s3_path = get_s3_path_from_ms_message_id(db, message_id)
-                    saved_s3_path = await AWSClientHelper.save_to_s3(
-                        boto3_session, BytesIO(content), global_config.s3_root_bucket, f"{s3_path}/{filename}"
-                    )
-                    links.append(saved_s3_path)
-                else:
-                    logger.bind(attachment=attachment).error("Fit for DLQ")
-            return links
-        else:
-            print(token.get("error"))
-            print(token.get("error_description"))
-            print(token.get("correlation_id"))  # You may need this when reporting a bug
+    config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
+    if "access_token" in token:
+        links = []
+        data = await list_message_attachments(tenant, id, message_id)
+        attachments: list = data["value"]
+        for attachment in attachments:
+            if 'contentBytes' in attachment.keys():
+                logger.bind(attachment=attachment).debug("attachment")
+                filename = attachment["name"]
+                content_b64 = attachment["contentBytes"]
+                # contentBytes is base64 encoded str
+                content = base64.b64decode(content_b64)
+                s3_path = get_s3_path_from_ms_message_id(db, message_id)
+                saved_s3_path = await AWSClientHelper.save_to_s3(
+                    boto3_session, BytesIO(content), global_config.s3_root_bucket, f"{s3_path}/{filename}"
+                )
+                links.append(saved_s3_path)
+            else:
+                logger.bind(attachment=attachment).error("Fit for DLQ")
+        return links
+    else:
+        print(token.get("error"))
+        print(token.get("error_description"))
+        print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
 @router.get("/users/{id}/messages/{message_id}/save")
@@ -159,31 +160,34 @@ async def save_message(tenant: str, id: str, message_id: str, db: Session = Depe
 
 
 @router.get("/users/{id}/save/messages")
-async def save_all_messages(tenant: str, id: str, db: Session = Depends(deps.get_db)):
+async def save_all_messages(tenant: str, id: str, top: int = 5, filter="", db: Session = Depends(deps.get_db)):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
-        messages_schema: MessagesSchema = await get_messages(tenant, id)
+        messages_schema: MessagesSchema = await get_messages(tenant, id, top=top, filter=filter)
         messages = messages_schema.value
+
+        if messages is None:
+            raise HTTPException(status_code=204, detail="No messages found")
 
         correspondence_id_create_schemas = []
         for message in messages:
             correspondence_id_create_schemas.append(CorrespondenceIdCreate(message_id=message.id))
-        correspondence_id_rows = CRUDCorrespondenceId(CorrespondenceId).create_multi(db, obj_ins=correspondence_id_create_schemas)
+        correspondence_id_rows = CRUDCorrespondenceId(CorrespondenceId)\
+            .create_multi(db, obj_ins=correspondence_id_create_schemas)
 
         correspondence_create_schemas = []
         for message in messages:
-            correspondence_create_schemas.append(
-                CorrespondenceCreate(
-                    message_id=message.id,
-                    subject=message.subject,
-                    body=message.body.content,
-                    attachments=",".join(await save_message_attachments(tenant, id, message.id, db)),
-                    from_address=message.from_email.emailAddress.address,
-                    to_address=",".join([r.emailAddress.address for r in message.toRecipients])
-                )
+            correspondence_create = CorrespondenceCreate(
+                message_id=message.id,
+                subject=message.subject,
+                body=message.body.content,
+                attachments=",".join(await save_message_attachments(tenant, id, message.id, db)),
+                from_address=message.from_email.emailAddress.address,
+                to_address=",".join([r.emailAddress.address for r in message.toRecipients])
             )
+            correspondence_create_schemas.append(correspondence_create)
         correspondence_rows = CRUDCorrespondence(Correspondence).create_multi(db, obj_ins=correspondence_create_schemas)
-        return correspondence_rows
+        return [f"{r.id} - {r.subject}" for r in correspondence_rows]
     else:
         print(token.get("error"))
         print(token.get("error_description"))
@@ -194,7 +198,7 @@ async def save_all_messages(tenant: str, id: str, db: Session = Depends(deps.get
 async def send_mail(tenant: str, id: str):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
-        message_to_send= SendMessageRequestSchema(
+        message_to_send = SendMessageRequestSchema(
             message=CreateMessageSchema(
                 subject="program mail send 2",
                 body=MessageBodySchema(

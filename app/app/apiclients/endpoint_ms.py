@@ -4,6 +4,8 @@ from loguru import logger
 from pydantic import BaseModel, Field
 from typing import Dict, Optional
 
+from app.core.settings import settings
+
 
 class OptionalQueryParams(BaseModel):
     top: Optional[str] = Field(None, alias="$top")
@@ -65,4 +67,4 @@ class MsEndpointsHelper:
 
 # endpoints_ms # TODO: move
 # endpoints_ms: MsEndpoints = MsEndpointsHelper._load_endpoints_ms("../configuration/endpoints_ms.json")
-endpoints_ms: MsEndpoints = MsEndpointsHelper._load_endpoints_ms("configuration/endpoints_ms.json")
+endpoints_ms: MsEndpoints = MsEndpointsHelper._load_endpoints_ms(f"{settings.CONFIGURATION_PATH}configuration/endpoints_ms.json")

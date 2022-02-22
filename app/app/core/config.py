@@ -5,6 +5,8 @@ import yaml
 from loguru import logger
 from pydantic import BaseModel
 
+from app.core.settings import settings
+
 
 class GlobalConfig(BaseModel):
     tenant: str
@@ -33,4 +35,6 @@ class GlobalConfigHelper:
 
 # TODO: move var
 # global_config = GlobalConfigHelper._load_global_config("../configuration/global_config.yml")
-global_config = GlobalConfigHelper._load_global_config("configuration/global_config.yml")
+global_config = GlobalConfigHelper._load_global_config(
+    f"{settings.CONFIGURATION_PATH}configuration/global_config.yml"
+)

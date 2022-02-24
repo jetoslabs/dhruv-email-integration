@@ -1,4 +1,4 @@
-# o365-manager
+# dhruv-email-integration
 manages interaction with o365
 
 #### 1. give me list of email for a user between 2 dates

@@ -1,8 +1,11 @@
 import json
+import os
 
 import yaml
 from loguru import logger
 from pydantic import BaseModel
+
+from app.core.settings import settings
 
 
 class GlobalConfig(BaseModel):
@@ -25,9 +28,13 @@ class GlobalConfigHelper:
                 config = GlobalConfig(**global_config_dict)
                 return config
         except Exception as e:
-            logger.bind().error("Error while loading global_config... exiting...")
+            logger.bind().error(f"cwd={os.getcwd()}")
+            logger.bind().error("Error while loading global_config... exiting")
             raise e
 
 
 # TODO: move var
-global_config = GlobalConfigHelper._load_global_config("../configuration/global_config.yml")
+# global_config = GlobalConfigHelper._load_global_config("../configuration/global_config.yml")
+global_config = GlobalConfigHelper._load_global_config(
+    f"{settings.CONFIGURATION_PATH}configuration/global_config.yml"
+)

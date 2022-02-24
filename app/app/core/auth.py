@@ -8,6 +8,8 @@ from loguru import logger
 from msal import ConfidentialClientApplication
 from pydantic import BaseModel
 
+from app.core.settings import settings
+
 
 class MsAuthConfig(BaseModel):
     authority: str
@@ -27,7 +29,7 @@ def load_ms_auth_configs(filepath: str) -> MsAuthConfigs:
         configs = MsAuthConfigs(**configs_dict)
         return configs
     except Exception as e:
-        logger.bind(error=e).error("Error while loading ms_auth_configs... Exiting...")
+        logger.bind(error=e, filepath=filepath).error(f"Error while loading ms_auth_configs, filepath = {filepath}... Exiting")
         sys.exit(1)
 
 
@@ -37,7 +39,8 @@ def get_ms_auth_config(tenant: str) -> MsAuthConfig:
 
 
 # TODO: move var - this is one of the many vars for global store
-ms_auth_configs = load_ms_auth_configs("../configuration/ms_auth_configs.json")
+# ms_auth_configs = load_ms_auth_configs("../configuration/ms_auth_configs.json")
+ms_auth_configs = load_ms_auth_configs(f"{settings.CONFIGURATION_PATH}configuration/ms_auth_configs.json")
 
 
 def get_confidential_client_application(config) -> ConfidentialClientApplication:

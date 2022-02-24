@@ -2,7 +2,7 @@
 import logging
 
 from app.db.init_db import init_db
-from app.db.db_session import db_session, engine
+from app.db.db_session import engine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

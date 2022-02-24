@@ -18,7 +18,7 @@ app = create_app()
 
 @app.on_event("startup")
 async def startup_event():
-    logger.bind().info("startup event ...")
+    logger.bind().info("Startup event")
     # setup logger before everything
     setup_logger()
     # TODO: setup ConfidentialClientApplication
@@ -29,8 +29,13 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    logger.bind().info("shutdown event ...")
+    logger.bind().info("Shutdown event")
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host=settings.HOST, port=settings.PORT,
-                reload=settings.APP_RELOAD, workers=settings.APP_WORKERS)
+    uvicorn.run(
+        "main:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=settings.APP_RELOAD,
+        workers=settings.APP_WORKERS
+    )

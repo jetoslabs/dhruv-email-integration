@@ -39,7 +39,7 @@ def add_filter_to_leave_out_internal_domain_messages(tenant_id: str, filter: str
     internal_domains: list = tenant_ms_auth_config.internal_domains
     new_filter = filter
     for domain in internal_domains:
-        # to_add = f"not contains(from/emailAddress/address,'{domain}')"
-        to_add = "not contains(from/emailAddress/address,'"+domain+"')"
+        to_add = f"not contains(from/emailAddress/address,'{domain}')"
+        # to_add = "not contains(from/emailAddress/address,'"+domain+"')"
         new_filter = MsEndpointHelper.build_filter(new_filter, to_add=to_add)
     return new_filter

@@ -30,14 +30,38 @@ class MsEndpointHelper:
     @staticmethod
     def form_url(endpoint: MsEndpoint):
         result_url = "" + endpoints_ms.base_url + endpoint.request_path_template
+        # request params
         if endpoint.request_params:
             for param_name, param_value in endpoint.request_params.items():
                 result_url = result_url.replace("{"+param_name+"}", param_value)
+        # optional query params
         if endpoint.optional_query_params:
+            is_first_param_added: bool = False
             for param_name, param_value in endpoint.optional_query_params.dict().items():
                 if param_value and '<' not in param_value and '>' not in param_value:
-                    result_url = f"{result_url}?{param_name}={param_value}"
+                    if is_first_param_added is False:
+                        result_url = f"{result_url}?{param_name}={param_value}"
+                        is_first_param_added = True
+                    elif is_first_param_added is True:
+                        result_url = f"{result_url}&{param_name}={param_value}"
         return result_url
+
+    @staticmethod
+    def build_filter(filter: str = "", *, to_add) -> str:
+        new_filter = filter
+        if not MsEndpointHelper._is_valid_to_add(to_add):
+            return filter
+        if filter == "":
+            new_filter = f"{to_add}"
+        else:
+            new_filter = f"{new_filter} and {to_add}"
+        return new_filter
+
+
+    @staticmethod
+    def _is_valid_to_add(to_add):
+        return type(to_add) == str
+
 
 
 class MsEndpointsHelper:

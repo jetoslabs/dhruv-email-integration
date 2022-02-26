@@ -23,21 +23,35 @@ class AWSClientHelper:
         s3_client = session.client('s3')
         try:
             s3_client.upload_fileobj(file_obj, bucket_name, object_name)
+            # upload_fileobj succeds even in cases like permission issue or bucket not present
+            if await AWSClientHelper.check_in_s3(session, bucket_name, object_name):
+                logger.bind(bucket_name=bucket_name, object_name=object_name).debug("Saved in s3")
+                return f"{bucket_name}/{object_name}"
         except ClientError as e:
             logger.bind(error=e).error("Error while save_to_s3")
             raise e
-        if await AWSClientHelper.check_in_s3(session, bucket_name, object_name):
-            return f"{bucket_name}/{object_name}"
 
     @staticmethod
     async def check_in_s3(session: boto3.Session, bucket_name: str, object_name: str) -> bool:
         s3_client = session.client('s3')
         try:
             s3_client.head_object(Bucket=bucket_name, Key=object_name)
+            return True
         except ClientError as e:
-            logger.bind(error=e).error("Error while check_in_s3")
-            raise e
-        return True
+            if e.response['Error']['Code'] == '404':
+                logger.bind(bucket_name=bucket_name, object_name=object_name).debug("Not Found in s3")
+            else:
+                raise e
+            return False
+
+    @staticmethod
+    async def get_or_save_get_in_s3(session: boto3.Session, file_obj: io.BytesIO, bucket_name: str, object_name: str) -> str:
+        exist = await AWSClientHelper.check_in_s3(session, bucket_name, object_name)
+        if exist:
+            return f"{bucket_name}/{object_name}"
+        else:
+            save = await AWSClientHelper.save_to_s3(session, file_obj, bucket_name, object_name)
+            return save
 
     @staticmethod
     async def delete_from_s3(session: boto3.Session, bucket_name: str, object_name: str) -> bool:

@@ -1,12 +1,11 @@
 from typing import TypeVar, Generic, Type, Any, Optional, List, Union, Dict
 
 from fastapi.encoders import jsonable_encoder
+from loguru import logger
 from pydantic import BaseModel
 
 from app.db.base_class import Base
 from sqlalchemy.orm import Session
-
-from app.models import CorrespondenceId
 
 ModelType = TypeVar("ModelType", bound=Base)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
@@ -31,6 +30,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def get_multi(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[ModelType]:
         return db.query(self.model).order_by(self.model.id).offset(skip).limit(limit).all()
 
+    def exists(self, db: Session, *, id: Any) -> bool:
+        return db.query(id).filter(self.model.id == id).first() is not None
+
     def create(self, db: Session, *, obj_in: CreateSchemaType) -> ModelType:
         obj_in_data = jsonable_encoder(obj_in)
         db_obj = self.model(**obj_in_data)  # type: ignore
@@ -40,15 +42,13 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return db_obj
 
     def create_multi(self, db: Session, *, obj_ins: List[CreateSchemaType]) -> List[ModelType]:
-        db_objs: List[CorrespondenceId] = []
+        db_objs: List[ModelType] = []
         for obj_in in obj_ins:
-            obj_in_data = jsonable_encoder(obj_in)
-            db_obj = self.model(**obj_in_data)  # type: ignore
-            db_objs.append(db_obj)
-        for db_obj in db_objs:
-            db.add(db_obj)
-            db.commit()
-            db.refresh(db_obj)
+            try:
+                db_obj = self.create(db, obj_in=obj_in)
+                db_objs.append(db_obj)
+            except Exception as e:
+                logger.bind(obj_in=obj_in).error("Cannot create")
         return db_objs
 
     def update(self, db: Session, *, db_obj: ModelType, obj_in: Union[UpdateSchemaType, Dict[str, Any]]) -> ModelType:

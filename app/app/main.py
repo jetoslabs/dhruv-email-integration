@@ -18,12 +18,12 @@ app = create_app()
 
 @app.on_event("startup")
 async def startup_event():
-    logger.bind().info("Startup event")
     # setup logger before everything
     setup_logger()
+    logger.bind().info("Startup event")
     # TODO: setup ConfidentialClientApplication
     # TODO: setup boto3 (s3) session
-    # ms_auth_configs
+    # TODO: init here... ms_auth_configs
     # endpoints_ms
 
 

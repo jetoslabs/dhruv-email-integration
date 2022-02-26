@@ -107,7 +107,7 @@ class AttachmentSchema(BaseModel):
     isInline: bool
     contentId: Optional[Any]
     contentLocation: Optional[Any]
-    contentBytes: str
+    contentBytes: Optional[str]
 
 
 class AttachmentsSchema(ODataNextLinkSchema, ODataContextSchema):

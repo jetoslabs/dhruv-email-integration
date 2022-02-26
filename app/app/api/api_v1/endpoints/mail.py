@@ -1,6 +1,6 @@
 import base64
 from io import BytesIO
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Union
 
 from aiohttp import ClientResponse
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,7 +12,7 @@ from app.api import deps
 from app.apiclients.api_client import ApiClient
 from app.apiclients.aws_client import AWSClientHelper, boto3_session
 from app.apiclients.endpoint_ms import MsEndpointsHelper, endpoints_ms, MsEndpointHelper
-from app.controllers.mail import get_s3_path_from_ms_message_id
+from app.controllers.mail import get_attachments_path_from_id, add_filter_to_leave_out_internal_domain_messages
 from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
 from app.core.config import global_config
 from app.crud.crud_correspondence import CRUDCorrespondence
@@ -21,7 +21,7 @@ from app.models import CorrespondenceId, Correspondence
 from app.schemas.schema_db import CorrespondenceIdCreate, CorrespondenceCreate
 from app.schemas.schema_ms_graph import MessagesSchema, MessageResponseSchema, AttachmentsSchema, \
     SendMessageRequestSchema, CreateMessageSchema, MessageBodySchema, EmailAddressWrapperSchema, EmailAddressSchema, \
-    AttachmentInCreateMessage
+    AttachmentInCreateMessage, AttachmentSchema
 
 router = APIRouter()
 
@@ -33,16 +33,13 @@ async def get_messages(tenant: str, id: str, top: int = 5, filter: str = "") -> 
         endpoint = MsEndpointsHelper.get_endpoint("message:list", endpoints_ms)
         endpoint.request_params['id'] = id
         endpoint.optional_query_params.top = str(top) if 0 < top <= 1000 else str(10)
-        if filter != "": endpoint.optional_query_params.filter = filter
+        new_filter = add_filter_to_leave_out_internal_domain_messages(tenant, filter)
+        if new_filter != "":
+            endpoint.optional_query_params.filter = new_filter
         url = MsEndpointHelper.form_url(endpoint)
         # url = f"{url}?$filter=receivedDateTime gt 2022-02-07T02:56:37Z"
 
-        api_client = ApiClient(
-            endpoint.request_method,
-            url,
-            headers=ApiClient.get_headers(token),
-            timeout_sec=30
-        )
+        api_client = ApiClient(endpoint.request_method, url, headers=ApiClient.get_headers(token), timeout_sec=30)
         response, data = await api_client.retryable_call()
         return MessagesSchema(**data) if type(data) == dict else data
     else:
@@ -92,22 +89,31 @@ async def save_message_attachments(
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         links = []
-        data = await list_message_attachments(tenant, id, message_id)
-        attachments: list = data["value"]
+        data: Union[dict, AttachmentsSchema] = await list_message_attachments(tenant, id, message_id)
+        if type(data) == dict: data = AttachmentsSchema(**data)
+        attachments: List[AttachmentSchema] = data.value
         for attachment in attachments:
-            if 'contentBytes' in attachment.keys():
-                logger.bind(attachment=attachment).debug("attachment")
-                filename = attachment["name"]
-                content_b64 = attachment["contentBytes"]
+            if attachment.contentBytes is not None:
+                logger.bind(filename=attachment.name, content_length=len(attachment.contentBytes)).debug("attachment")
+                filename = attachment.name
+                content_b64 = attachment.contentBytes
                 # contentBytes is base64 encoded str
                 content = base64.b64decode(content_b64)
-                s3_path = get_s3_path_from_ms_message_id(db, message_id)
-                saved_s3_path = await AWSClientHelper.save_to_s3(
+                # s3_path = get_s3_path_from_ms_message_id(db, message_id)
+                id_record = CRUDCorrespondenceId(CorrespondenceId).get_by_message_id_or_create_if_not_exist(
+                    db, obj_in=CorrespondenceIdCreate(message_id=message_id))
+                # if id_record is None:
+                #     raise HTTPException(status_code=500)
+                s3_path = get_attachments_path_from_id(id_record.id)
+                saved_s3_path = await AWSClientHelper.get_or_save_get_in_s3(
                     boto3_session, BytesIO(content), global_config.s3_root_bucket, f"{s3_path}/{filename}"
                 )
                 links.append(saved_s3_path)
             else:
-                logger.bind(attachment=attachment).error("Fit for DLQ")
+                logger.bind(attachment=attachment).info("No content")
+        if len(links) == 0:
+            # raise HTTPException(status_code=204, detail="Nothing saved") # TODO: bring back in some form
+            pass
         return links
     else:
         print(token.get("error"))
@@ -121,11 +127,13 @@ async def save_message(tenant: str, id: str, message_id: str, db: Session = Depe
     if "access_token" in token:
         message: MessageResponseSchema = await get_message(tenant, id, message_id)
         # save message to correspondenceId table
-        correspondence_id_record = CRUDCorrespondenceId(CorrespondenceId).create(
+        correspondence_id_record = CRUDCorrespondenceId(CorrespondenceId).get_by_message_id_or_create_if_not_exist(
             db, obj_in=CorrespondenceIdCreate(message_id=message_id)
         )
+        if correspondence_id_record is None:
+            raise HTTPException(status_code=400)
         # save message to Correspondence table
-        new_row = CRUDCorrespondence(Correspondence).create(
+        new_row = CRUDCorrespondence(Correspondence).get_by_message_id_or_create_get_if_not_exist(
             db, obj_in=CorrespondenceCreate(
                 message_id=message_id,
                 subject=message.subject,
@@ -135,6 +143,8 @@ async def save_message(tenant: str, id: str, message_id: str, db: Session = Depe
                 to_address=",".join([r.emailAddress.address for r in message.toRecipients])
             )
         )
+        # if new_row is None:
+        #     raise HTTPException(status_code=204, detail="Nothing saved, Already Exist")
         return new_row
     else:
         print(token.get("error"))
@@ -155,22 +165,26 @@ async def save_all_messages(tenant: str, id: str, top: int = 5, filter="", db: S
         correspondence_id_create_schemas = []
         for message in messages:
             correspondence_id_create_schemas.append(CorrespondenceIdCreate(message_id=message.id))
-        correspondence_id_rows = CRUDCorrespondenceId(CorrespondenceId).create_multi(
-            db, obj_ins=correspondence_id_create_schemas
-        )
+        correspondence_id_rows = CRUDCorrespondenceId(CorrespondenceId)\
+            .get_by_message_id_or_create_if_not_exist_multi(db, obj_ins=correspondence_id_create_schemas)
 
         correspondence_create_schemas = []
         for message in messages:
+            attachments = await save_message_attachments(tenant, id, message.id, db)
+            try:
+                correspondence_create_attachments = ",".join(attachments) if attachments is not None else None
+            except Exception as e:
+                raise e
             correspondence_create = CorrespondenceCreate(
                 message_id=message.id,
                 subject=message.subject,
                 body=message.body.content,
-                attachments=",".join(await save_message_attachments(tenant, id, message.id, db)),
+                attachments=correspondence_create_attachments,
                 from_address=message.from_email.emailAddress.address,
                 to_address=",".join([r.emailAddress.address for r in message.toRecipients])
             )
             correspondence_create_schemas.append(correspondence_create)
-        correspondence_rows = CRUDCorrespondence(Correspondence).create_multi(db, obj_ins=correspondence_create_schemas)
+        correspondence_rows = CRUDCorrespondence(Correspondence).get_by_message_id_or_create_get_if_not_exist_multi(db, obj_ins=correspondence_create_schemas)
         return [f"{r.id} - {r.subject}" for r in correspondence_rows]
     else:
         print(token.get("error"))

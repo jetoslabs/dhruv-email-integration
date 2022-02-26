@@ -1,7 +1,7 @@
 #  MS Identity Platform
 import json
 import sys
-from typing import Any, Union, Tuple, Dict
+from typing import Any, Union, Tuple, Dict, Optional
 
 import msal
 from loguru import logger
@@ -16,6 +16,7 @@ class MsAuthConfig(BaseModel):
     client_id: str
     scope: list
     secret: str
+    internal_domains: Optional[list]
     endpoint: str
 
 
@@ -36,6 +37,13 @@ def load_ms_auth_configs(filepath: str) -> MsAuthConfigs:
 def get_ms_auth_config(tenant: str) -> MsAuthConfig:
     config = ms_auth_configs.configs[tenant]
     return config
+
+
+# def is_email_in_internal_domains(tenant: str, email: str) -> bool:
+#     tenant_auth_config = get_ms_auth_config(tenant)
+#     internal_domains: Optional[list] = tenant_auth_config.internal_domains
+#     if internal_domains is None: return False
+#     return email in internal_domains
 
 
 # TODO: move var - this is one of the many vars for global store

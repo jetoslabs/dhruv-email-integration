@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 from sqlalchemy import Column, String, Integer
 from sqlalchemy.orm import Session
@@ -7,7 +9,8 @@ from app.db.base_class import Base
 
 
 class SimpleSchema(BaseModel):
-    message_id: str
+    id: Optional[int]
+    message_id: Optional[str]
 
 
 class SimpleModel(Base):
@@ -37,3 +40,16 @@ def test_update(db: Session):
     assert created.message_id == message_id
     updated = CRUDBase(SimpleModel).update(db, db_obj=created, obj_in=SimpleSchema(message_id=updated_message_id))
     assert updated.message_id == updated_message_id
+
+
+def test_exists(db: Session):
+    # does not exist
+    is_exist = CRUDBase(SimpleModel).exists(db, id=1231123)
+    assert not is_exist
+
+    # does exist
+    message_id = "ok_ok_ok"
+    base_schema = SimpleSchema(message_id=message_id)
+    created = CRUDBase(SimpleModel).create(db, obj_in=base_schema)
+    is_exist = CRUDBase(SimpleModel).exists(db, id=created.id)
+    assert is_exist

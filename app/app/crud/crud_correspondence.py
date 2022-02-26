@@ -16,6 +16,7 @@ class CRUDCorrespondence(CRUDBase[Correspondence, CorrespondenceCreate, Correspo
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
+        logger.bind().debug("")
         return db_obj
 
     def get_by_message_id(self, db: Session, *, message_id: str) -> List[Correspondence]:

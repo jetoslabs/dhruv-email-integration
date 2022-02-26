@@ -47,7 +47,7 @@ class ApiClient:
         last_error = None
 
         for i in range(retries):
-            logger.bind(apiClient=self.__dict__).info("http call")
+            logger.bind(method=self.method, url=self.url).info("http call")
             try:
                 return await self.call()
             except asyncio.exceptions.TimeoutError as e:

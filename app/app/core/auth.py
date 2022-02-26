@@ -29,7 +29,7 @@ def load_ms_auth_configs(filepath: str) -> MsAuthConfigs:
         configs = MsAuthConfigs(**configs_dict)
         return configs
     except Exception as e:
-        logger.bind(error=e, filepath=filepath).error(f"Error while loading ms_auth_configs, filepath = {filepath}... Exiting")
+        logger.bind(error=e, filepath=filepath).error(f"Error while loading ms_auth_configs, filepath = {filepath}... Exiting\n {e}")
         sys.exit(1)
 
 

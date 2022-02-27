@@ -1,4 +1,3 @@
-import json
 import os
 
 import yaml
@@ -10,7 +9,12 @@ from app.core.settings import settings
 
 class GlobalConfig(BaseModel):
     tenant: str
+
     db_url: str
+    db_pwd: str
+    db_sales97_name: str
+    db_fit_name: str
+
     aws_access_key_id: str
     aws_access_secret: str
     aws_region: str

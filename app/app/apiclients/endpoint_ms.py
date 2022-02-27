@@ -1,29 +1,9 @@
 import json
 
 from loguru import logger
-from pydantic import BaseModel, Field
-from typing import Dict, Optional
 
 from app.core.settings import settings
-
-
-class OptionalQueryParams(BaseModel):
-    top: Optional[str] = Field(None, alias="$top")
-    filter: Optional[str] = Field(None, alias="$filter")
-    orderby: Optional[str] = Field(None, alias="$orderby")
-
-
-class MsEndpoint(BaseModel):
-    application_permissions: list
-    request_method: str
-    request_path_template: str
-    request_params: dict
-    optional_query_params: Optional[OptionalQueryParams]
-
-
-class MsEndpoints(BaseModel):
-    base_url: str
-    endpoints: Dict[str, MsEndpoint]
+from app.schemas.schema_endpoint_ms import MsEndpoint, MsEndpoints
 
 
 class MsEndpointHelper:
@@ -57,11 +37,9 @@ class MsEndpointHelper:
             new_filter = f"{new_filter} and {to_add}"
         return new_filter
 
-
     @staticmethod
     def _is_valid_to_add(to_add):
         return type(to_add) == str
-
 
 
 class MsEndpointsHelper:
@@ -81,12 +59,6 @@ class MsEndpointsHelper:
     @staticmethod
     def get_endpoint(endpoint_name: str, ms_endpoints: MsEndpoints) -> MsEndpoint:
         return ms_endpoints.endpoints.get(endpoint_name).copy()
-
-    # @staticmethod
-    # def form_url(endpoint_name: str, endpoints_ms: MsEndpoints) -> str:
-    #     endpoint = MsEndpointsHelper.get_endpoint(endpoint_name, endpoints_ms)
-    #     result_url = endpoints_ms.base_url + MSEndpointHelper.form_url(endpoint.request_url, endpoint.request_params)
-    #     return result_url
 
 
 # endpoints_ms # TODO: move

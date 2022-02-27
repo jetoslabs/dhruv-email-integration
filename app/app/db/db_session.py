@@ -1,9 +1,30 @@
+import urllib.parse
+
 from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 from app.core.config import global_config
 
+
+def get_sqlalchemy_url(db_name: str) -> str:
+    safe_string = urllib.parse.quote_plus(global_config.db_pwd)
+    url = global_config.db_url.replace("<db_pwd>", safe_string)
+    url = url.replace("<db_name>", db_name)
+    return url
+
+
+def get_db_engine(db_name: str) -> Engine:
+    eng = create_engine(url=get_sqlalchemy_url(db_name), pool_pre_ping=True)
+    return eng
+
+
+def get_db_session(eng: Engine):
+    session_local = sessionmaker(bind=eng)
+    return session_local
+
+
 # create an engine
-engine = create_engine(global_config.db_url, pool_pre_ping=True)
+engine = create_engine(get_sqlalchemy_url(global_config.db_sales97_name), pool_pre_ping=True)
 
 # create a configured "Session" class
 SessionLocal = sessionmaker(bind=engine)

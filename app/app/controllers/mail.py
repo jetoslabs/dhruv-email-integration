@@ -2,20 +2,6 @@
 from app.apiclients.endpoint_ms import MsEndpointHelper
 from app.core.auth import get_ms_auth_config
 
-# def get_s3_path_from_ms_message_id(db: Session, message_id: str) -> str:
-#     """
-#     gets the record from id table and uses id filed value to get dir_path
-#     :param db: Session
-#     :param message_id: str
-#     :return: str
-#     """
-#     id_record = CRUDCorrespondenceId(CorrespondenceId).get_by_message_id(db, message_id=message_id)
-#     if id_record is None:
-#         id_record = CRUDCorrespondenceId(CorrespondenceId).create(
-#             db, obj_in=CorrespondenceIdCreate(message_id=message_id))
-#     directory = get_s3_path_from_correspondence_id(id_record.id)
-#     return directory
-
 
 def get_attachments_path_from_id(id: int, *, min_length=6) -> str:
     """

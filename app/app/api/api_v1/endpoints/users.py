@@ -1,9 +1,12 @@
+from functools import lru_cache
+from typing import Optional
+
 from fastapi import APIRouter
 
 from app.apiclients.api_client import ApiClient
 from app.apiclients.endpoint_ms import endpoints_ms, MsEndpointsHelper, MsEndpointHelper
 from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
-from app.schemas.schema_ms_graph import UsersSchema, UserResponseSchema
+from app.schemas.schema_ms_graph import UsersSchema, UserResponseSchema, UserSchema
 
 router = APIRouter()
 
@@ -35,6 +38,26 @@ async def get_user(tenant: str, user_id: str) -> UserResponseSchema:
         url = MsEndpointHelper.form_url(endpoint)
         response, data = await ApiClient('get', url, headers=ApiClient.get_headers(token)).retryable_call()
         return UserResponseSchema(**data) if type(data) == 'dict' else data
+    else:
+        print(token.get("error"))
+        print(token.get("error_description"))
+        print(token.get("correlation_id"))  # You may need this when reporting a bug
+
+
+@lru_cache
+@router.get("/users/{user_email}", response_model=UserSchema)
+async def get_user(tenant: str, user_email: str) -> Optional[UserSchema]:
+    config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
+    if "access_token" in token:
+        users_schema: UsersSchema = await get_users(tenant)
+        if type(users_schema) == dict:
+            users_schema = UsersSchema(**users_schema)
+        if users_schema.value is None or len(users_schema.value) == 0:
+            return
+        users = users_schema.value
+        for user in users:
+            if user.mail == user_email:
+                return user
     else:
         print(token.get("error"))
         print(token.get("error_description"))

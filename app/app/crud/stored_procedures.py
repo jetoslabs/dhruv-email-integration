@@ -9,20 +9,20 @@ from app.schemas.schema_sp import EmailTrackerGetEmailIDSchema, EmailTrackerGetE
 class StoredProcedures:
 
     @staticmethod
-    async def dhruv_EmailTrackerGetEmailID(db: Session) -> List[EmailTrackerGetEmailIDSchema]:
+    async def dhruv_EmailTrackerGetEmailID(db_sales97: Session) -> List[EmailTrackerGetEmailIDSchema]:
         res: List[EmailTrackerGetEmailIDSchema] = run_stored_procedure(
-            db, "sales97.dbo.dhruv_EmailTrackerGetEmailID", AnyBaseModelSchema=EmailTrackerGetEmailIDSchema
+            db_sales97, "sales97.dbo.dhruv_EmailTrackerGetEmailID", AnyBaseModelSchema=EmailTrackerGetEmailIDSchema
         )
         return res
 
     @staticmethod
     async def dhruv_EmailTrackerGetEmailLinkInfo(
-            db: Session, param_obj: EmailTrackerGetEmailLinkInfoParams
+            db_fit: Session, param_obj: EmailTrackerGetEmailLinkInfoParams
     ) -> List[EmailTrackerGetEmailLinkInfo]:
         # ordered params list
         params = [param_obj.email, param_obj.empty, param_obj.date]
         res: List[Any] = run_stored_procedure(
-            db,
+            db_fit,
             "fit.dbo.dhruv_EmailTrackerGetEmailLinkInfo",
             params,
             AnyBaseModelSchema=EmailTrackerGetEmailLinkInfo

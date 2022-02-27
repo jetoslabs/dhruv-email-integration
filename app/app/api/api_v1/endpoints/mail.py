@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from starlette.responses import JSONResponse
 
 from app.api import deps
+from app.api.api_v1.endpoints.users import get_user_by_email
 from app.apiclients.api_client import ApiClient
 from app.apiclients.aws_client import AWSClientHelper, boto3_session
 from app.apiclients.endpoint_ms import MsEndpointsHelper, endpoints_ms, MsEndpointHelper
@@ -17,11 +18,13 @@ from app.core.auth import get_auth_config_and_confidential_client_application_an
 from app.core.config import global_config
 from app.crud.crud_correspondence import CRUDCorrespondence
 from app.crud.crud_correspondence_id import CRUDCorrespondenceId
+from app.crud.stored_procedures import StoredProcedures
 from app.models import CorrespondenceId, Correspondence
 from app.schemas.schema_db import CorrespondenceIdCreate, CorrespondenceCreate
 from app.schemas.schema_ms_graph import MessagesSchema, MessageResponseSchema, AttachmentsSchema, \
     SendMessageRequestSchema, CreateMessageSchema, MessageBodySchema, EmailAddressWrapperSchema, EmailAddressSchema, \
     AttachmentInCreateMessage, AttachmentSchema
+from app.schemas.schema_sp import EmailTrackerGetEmailIDSchema
 
 router = APIRouter()
 
@@ -152,8 +155,8 @@ async def save_message(tenant: str, id: str, message_id: str, db: Session = Depe
         print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
-@router.get("/users/{id}/save/messages")
-async def save_all_messages(tenant: str, id: str, top: int = 5, filter="", db: Session = Depends(deps.get_db)):
+@router.get("/users/{id}/messages/save")
+async def save_user_messages(tenant: str, id: str, top: int = 5, filter="", db: Session = Depends(deps.get_mailstore_db)):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         messages_schema: MessagesSchema = await get_messages(tenant, id, top=top, filter=filter)
@@ -190,6 +193,34 @@ async def save_all_messages(tenant: str, id: str, top: int = 5, filter="", db: S
         print(token.get("error"))
         print(token.get("error_description"))
         print(token.get("correlation_id"))  # You may need this when reporting a bug
+
+
+@router.get("/messages/save")
+async def save_tenant_messages(
+        tenant: str,
+        top: int = 5,
+        filter="",
+        db_sales97: Session = Depends(deps.get_sales97_db),
+        db_fit: Session = Depends(deps.get_fit_db)
+):
+    # get list of trackable users
+    users_to_track: List[EmailTrackerGetEmailIDSchema] = await StoredProcedures.dhruv_EmailTrackerGetEmailID(db_sales97)
+    # get user ids for those email ids
+    users = []
+    for user_to_track in users_to_track:
+        user = await get_user_by_email(tenant, user_to_track.EMailId)
+        if user is None:
+            logger.bind(user_to_track=user_to_track).error("Cannot find in Azure")
+        else:
+            logger.bind(user_to_track=user_to_track).debug("Found in Azure")
+            users.append(user)
+    # call save_user_messages for each user id
+    all_saves = []
+    for user in users:
+        saves = await save_user_messages(tenant, user.id)
+        all_saves.append(saves)
+        logger.bind(user=user, saves=saves).info("Saved user messages")
+    return all_saves
 
 
 @router.post("/users/{id}/sendMail", status_code=202)

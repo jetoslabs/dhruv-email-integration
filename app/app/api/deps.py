@@ -38,3 +38,12 @@ def get_fit_db() -> Generator:
         yield db
     finally:
         db.close()
+
+
+def get_mailstore_db() -> Generator:
+    try:
+        session_local = get_db_session(get_db_engine(global_config.db_mailstore_name))
+        db = session_local()
+        yield db
+    finally:
+        db.close()

@@ -1,4 +1,31 @@
+import datetime
+
 from pydantic import BaseModel
+
+
+class SECorrespondence(BaseModel):
+    DocSentDate: datetime.datetime
+    MailUniqueId: str
+    MailSubject: str
+    MailBody1: str
+    MailTo: str
+    MailCC: str
+    MailFrom: str
+    MailBCC: str
+    DocSendOn: datetime.datetime
+    QuoteNo: int
+    BkgNo: int
+    AccountCode: str
+    IsAttachmentProcessed: bool
+    HasAttachment: bool
+
+
+class SECorrespondenceCreate(SECorrespondence):
+    pass
+
+
+class SECorrespondenceUpdate(BaseModel):
+    IsAttachmentProcessed: bool
 
 
 class CorrespondenceId(BaseModel):
@@ -28,3 +55,4 @@ class CorrespondenceCreate(Correspondence):
 
 class CorrespondenceUpdate(Correspondence):
     pass
+

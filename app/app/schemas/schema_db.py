@@ -18,6 +18,11 @@ class SECorrespondence(BaseModel):
     AccountCode: str
     IsAttachmentProcessed: bool
     HasAttachment: bool
+    CrDate: datetime.datetime
+    CrTime: datetime.datetime
+    UpdDate: datetime.datetime
+    UpdTime: datetime.datetime
+    UpdPlace: str
 
 
 class SECorrespondenceCreate(SECorrespondence):

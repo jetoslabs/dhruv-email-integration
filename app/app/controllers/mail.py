@@ -71,7 +71,7 @@ def map_MessageSchema_to_SECorrespondenceCreate(
         email_link_info: EmailTrackerGetEmailLinkInfo,
         loop_start_epoch: str
 ) -> SECorrespondenceCreate:
-    curr_date_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+    curr_date_time: datetime = datetime.fromisoformat(datetime.utcnow().isoformat(sep='T', timespec='seconds'))
     obj_in = SECorrespondenceCreate(
         DocSentDate=datetime.strptime(message.sentDateTime, "%Y-%m-%dT%H:%M:%SZ"),
         MailUniqueId=message.id,

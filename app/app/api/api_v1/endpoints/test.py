@@ -115,7 +115,7 @@ async def stored_procedure(db: Session = Depends(deps.get_fit_db)):
     res = await StoredProcedures.dhruv_EmailTrackerGetEmailLinkInfo(
         db,
         EmailTrackerGetEmailLinkInfoParams(
-            email='xxxxx@gmail.com',
+            email='fiona.byrd@gmail.com',
             date='02/22/2022'
         )
     )

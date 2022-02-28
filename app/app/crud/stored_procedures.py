@@ -44,7 +44,10 @@ def run_stored_procedure(
     result: List[AnyBaseModelSchema] = []
     for row in cursor:
         result.append(AnyBaseModelSchema(**row)) if AnyBaseModelSchema != dict else result.append(row)
-    logger.bind(stored_procedure=stored_procedure_name, count=len(result)).debug("Ran Stored procedure")
+    logger.bind(
+        stored_procedure_name_plus_params=stored_procedure_name_plus_params,
+        result=result[len(result)-1]
+    ).debug("Ran Stored procedure")
     return result
 
 

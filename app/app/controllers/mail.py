@@ -21,7 +21,10 @@ def get_attachments_path_from_id(id: int, *, min_length=6) -> str:
         concat_str = "".join(['0' for i in range(0, min_length-len(id_str))])
         id_str = concat_str+id_str
 
-    return "/".join([id_str[i] for i in range(0, len(id_str))])
+    path = "/".join([id_str[i] for i in range(0, len(id_str))])
+    path = f"{path}/{id}"
+    return path
+
 
 
 def add_filter_to_leave_out_internal_domain_messages(tenant_id: str, filter: str) -> str:

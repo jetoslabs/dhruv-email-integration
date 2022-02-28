@@ -1,5 +1,7 @@
+import base64
 import time
-from typing import List, Tuple
+from io import BytesIO
+from typing import List, Tuple, Union
 
 from aiohttp import ClientResponse
 from fastapi import APIRouter, Depends, HTTPException
@@ -12,6 +14,7 @@ from app.api.api_v1.endpoints.users import get_user_by_email
 from app.apiclients.api_client import ApiClient
 from app.apiclients.aws_client import AWSClientHelper, boto3_session
 from app.apiclients.endpoint_ms import MsEndpointsHelper, endpoints_ms, MsEndpointHelper
+from app.apiclients.file_client import FileHelper
 from app.controllers.mail import get_attachments_path_from_id, add_filter_to_leave_out_internal_domain_messages, \
     map_MessageResponseSchema_to_SECorrespondenceCreate, map_MessageSchema_to_SECorrespondenceCreate
 from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
@@ -73,6 +76,62 @@ async def get_message(tenant: str, id: str, message_id: str) -> MessageResponseS
         print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
+@router.get("/users/{id}/messages/{message_id}/attachments", response_model=AttachmentsSchema)
+async def list_message_attachments(tenant: str, id: str, message_id: str) -> AttachmentsSchema:
+    config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
+    if "access_token" in token:
+        endpoint = MsEndpointsHelper.get_endpoint("message:list:attachment", endpoints_ms)
+        endpoint.request_params["id"] = id
+        endpoint.request_params["message_id"] = message_id
+        url = MsEndpointHelper.form_url(endpoint)
+        api_client = ApiClient(endpoint.request_method, url, headers=ApiClient.get_headers(token), timeout_sec=3000)
+        response, data = await api_client.retryable_call()
+        return AttachmentsSchema(**data) if type(data) == 'dict' else data
+    else:
+        print(token.get("error"))
+        print(token.get("error_description"))
+        print(token.get("correlation_id"))  # You may need this when reporting a bug
+
+
+@router.get("/users/{id}/messages/{message_id}/attachments/save", response_model=List[str])
+async def save_message_attachments(
+        tenant: str, id: str, message_id: str, db: Session = Depends(deps.get_mailstore_db)
+) -> List[str]:
+    config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
+    if "access_token" in token:
+        links = []
+        data: Union[dict, AttachmentsSchema] = await list_message_attachments(tenant, id, message_id)
+        if type(data) == dict: data = AttachmentsSchema(**data)
+        attachments: List[AttachmentSchema] = data.value
+        for attachment in attachments:
+            if attachment.contentBytes is not None:
+                logger.bind(filename=attachment.name, content_length=len(attachment.contentBytes)).debug("attachment")
+                filename = attachment.name
+                content_b64 = attachment.contentBytes
+                # contentBytes is base64 encoded str
+                content = base64.b64decode(content_b64)
+                id_record = CRUDSECorrespondence(SECorrespondence).get_by_mail_unique_id(db, mail_unique_id=message_id)
+                if id_record is None:
+                    # raise HTTPException(status_code=500)
+                    logger.bind().error("Cannot find mail_id")
+                file_relative_path = get_attachments_path_from_id(id_record.SeqNo)
+                saved_to = await FileHelper.get_or_save_get_in_disk(
+                    BytesIO(content), global_config.disk_base_path, file_relative_path, filename
+                )
+                logger.bind(saved_to=saved_to).info("Saved to disk")
+                links.append(saved_to)
+            else:
+                logger.bind(attachment=attachment).info("No content")
+        if len(links) == 0:
+            # raise HTTPException(status_code=204, detail="Nothing saved") # TODO: bring back in some form
+            pass
+        return links
+    else:
+        print(token.get("error"))
+        print(token.get("error_description"))
+        print(token.get("correlation_id"))  # You may need this when reporting a bug
+
+
 @router.get("/users/{id}/messages/{message_id}/save")
 async def save_message(tenant: str, id: str, message_id: str, db: Session = Depends(deps.get_mailstore_db)):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
@@ -101,7 +160,8 @@ async def save_message(tenant: str, id: str, message_id: str, db: Session = Depe
         )
 
         new_row = CRUDSECorrespondence(SECorrespondence).create(db, obj_in=obj_in)
-        return new_row
+        # links = await save_message_attachments(tenant, id, message_id)
+        # return new_row
     else:
         print(token.get("error"))
         print(token.get("error_description"))
@@ -139,6 +199,10 @@ async def save_user_messages(tenant: str, id: str, top: int = 5, filter="", db: 
             db,
             obj_ins=se_correspondence_create_schemas
         )
+
+        for se_correspondence_row in se_correspondence_rows:
+            links = await save_message_attachments(tenant, id, se_correspondence_row.MailUniqueId, db)
+
 
         return [f"{r.SeqNo} - {r.MailFrom} - {r.MailSubject}" for r in se_correspondence_rows]
     else:

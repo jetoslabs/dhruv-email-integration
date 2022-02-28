@@ -22,6 +22,7 @@ class GlobalConfig(BaseModel):
     aws_output: str
     s3_root_bucket: str
     s3_default_object_prefix: str
+    disk_base_path: str
 
 
 class GlobalConfigHelper:

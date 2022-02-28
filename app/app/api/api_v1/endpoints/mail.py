@@ -46,7 +46,10 @@ async def get_messages(tenant: str, id: str, top: int = 5, filter: str = "") -> 
 
         api_client = ApiClient(endpoint.request_method, url, headers=ApiClient.get_headers(token), timeout_sec=30)
         response, data = await api_client.retryable_call()
-        return MessagesSchema(**data) if type(data) == dict else data
+        try:
+            return MessagesSchema(**data) if type(data) == dict else data
+        except Exception as e:
+            logger.bind().error(e)
     else:
         print(token.get("error"))
         print(token.get("error_description"))

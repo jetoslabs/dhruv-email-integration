@@ -54,7 +54,8 @@ class MessageFlagSchema(BaseModel):
 
 
 class MessageSchema(BaseModel):
-    odata_etag: Optional[str] = Field(None, alias="@odata.etag")
+    odata_type: Optional[str] = Field(None, alias="@odata.type")
+    odata_etag: str = Field(None, alias="@odata.etag")
     id: str
     createdDateTime: str
     lastModifiedDateTime: str
@@ -77,13 +78,24 @@ class MessageSchema(BaseModel):
     webLink: str
     inferenceClassification: str
     body: Optional[MessageBodySchema]
-    sender: EmailAddressWrapperSchema
-    from_email: EmailAddressWrapperSchema = Field(None, alias="from")
-    toRecipients: List[EmailAddressWrapperSchema]
+    sender: Optional[EmailAddressWrapperSchema]  # Optional, isDraft= True
+    from_email: Optional[EmailAddressWrapperSchema] = Field(None, alias="from")  # Optional, isDraft= True
+    toRecipients: Optional[List[EmailAddressWrapperSchema]]
     ccRecipients: List[EmailAddressWrapperSchema]
     bccRecipients: List[EmailAddressWrapperSchema]
     replyTo: List[EmailAddressWrapperSchema]
     flag: MessageFlagSchema
+    # Optional, odata_type = '#microsoft.graph.eventMessageResponse'
+    meetingMessageType: Optional[str]
+    type: Optional[str]
+    isOutOfDate: Optional[bool]
+    isAllDay: Optional[bool]
+    isDelegated: Optional[bool]
+    responseType: Optional[str]
+    startDateTime: Optional[dict]
+    endDateTime: Optional[dict]
+    location: Optional[dict]
+    recurrence: Optional[Any]
 
 
 class MessageResponseSchema(MessageSchema, ODataContextSchema):

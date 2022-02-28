@@ -6,7 +6,7 @@ from app.db.base_class import Base
 
 class SECorrespondence(Base):
     __tablename__ = 'SECorrespondence'
-    SeqNo = Column(Integer, primary_key=True, index=True)
+    SeqNo = Column(Integer, primary_key=True)
     DocSentDate = Column(DateTime)
     MailUniqueId = Column(String)
     MailSubject = Column(Text)
@@ -32,3 +32,12 @@ class SECorrespondence(Base):
     MailPriority = Column(Integer, default=0)
     PublishToMyDhruvInd = Column(Boolean, default=False)
     IsMailSent = Column(Boolean, default=False)
+    CrUId = Column(String(10), default='AUTO')
+    CrDate = Column(DateTime)
+    CrTime = Column(DateTime)
+    FrzInd = Column(Boolean, default=False)
+    UpdUId = Column(String(10), default='AUTO')
+    UpdDate = Column(DateTime)
+    UpdTime = Column(DateTime)
+    UpdPlace = Column(String(10))
+

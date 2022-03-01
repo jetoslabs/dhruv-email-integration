@@ -224,8 +224,9 @@ async def save_user_messages(
         # save attachments
         links = []
         for se_correspondence_row in se_correspondence_rows:
-            message_links = await save_message_attachments(tenant, id, se_correspondence_row.MailUniqueId, db_mailstore)
-            links.append(",".join(message_links))
+            if se_correspondence_row.HasAttachment:
+                message_links = await save_message_attachments(tenant, id, se_correspondence_row.MailUniqueId, db_mailstore)
+                links.append(",".join(message_links))
         return se_correspondence_rows, links
     else:
         logger.bind(
@@ -274,7 +275,7 @@ async def save_tenant_messages(
         for user in users:
             try:
                 rows, links = await save_user_messages(tenant, user.id, top, filter, db_fit, db_mailstore)
-                logger.bind(tenant=tenant, user=user, rows=rows, links=links).info("Saved user messages")
+                logger.bind(tenant=tenant, user=user, rows=len(rows), links=len(links)).info("Saved user messages")
                 if len(rows) > 0: all_rows.append(rows)
                 if len(links) > 0: all_links.append(",".join(links))
             except Exception as e:

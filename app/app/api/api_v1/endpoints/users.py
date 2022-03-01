@@ -44,7 +44,6 @@ async def get_user(tenant: str, user_id: str) -> UserResponseSchema:
         print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
-@lru_cache
 @router.get("/users/{user_email}", response_model=UserSchema)
 async def get_user_by_email(tenant: str, user_email: str) -> Optional[UserSchema]:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)

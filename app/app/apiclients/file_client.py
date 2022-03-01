@@ -17,7 +17,7 @@ class FileHelper:
             with open(full_path, 'wb') as file:
                 file.write(file_obj.read())
 
-            if FileHelper.check_in_disk(base_path, relative_path, filename):
+            if await FileHelper.check_in_disk(base_path, relative_path, filename):
                 logger.bind(full_path=full_path).debug("Saved to disk")
                 return full_path
 
@@ -36,7 +36,7 @@ class FileHelper:
     async def get_or_save_get_in_disk(file_obj: io.BytesIO, base_path: str, relative_path: str, filename: str) -> str:
         exist = await FileHelper.check_in_disk(base_path, relative_path, filename)
         if exist:
-            return f"{base_path}/{relative_path}"
+            return f"{base_path}/{relative_path}/{filename}"
         else:
             save = await FileHelper.save_to_disk(file_obj, base_path, relative_path, filename)
             return save

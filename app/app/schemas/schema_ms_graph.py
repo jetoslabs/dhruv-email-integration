@@ -42,7 +42,7 @@ class MessageBodySchema(BaseModel):
 
 class EmailAddressSchema(BaseModel):
     name: str
-    address: str
+    address: Optional[str]
 
 
 class EmailAddressWrapperSchema(BaseModel):

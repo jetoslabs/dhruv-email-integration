@@ -6,7 +6,7 @@ from sqlalchemy.orm import declared_attr
 
 @as_declarative()
 class Base:
-    id: Any
+    SeqNo: Any
     __name__: str
 
     # Generate __tablename__ automatically

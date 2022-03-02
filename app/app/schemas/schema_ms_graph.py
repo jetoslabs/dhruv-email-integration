@@ -1,5 +1,4 @@
-from datetime import time
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Union
 
 from pydantic import BaseModel, Field
 
@@ -41,8 +40,8 @@ class MessageBodySchema(BaseModel):
 
 
 class EmailAddressSchema(BaseModel):
-    name: str
-    address: str
+    name: Optional[str]
+    address: Optional[str]
 
 
 class EmailAddressWrapperSchema(BaseModel):
@@ -54,14 +53,15 @@ class MessageFlagSchema(BaseModel):
 
 
 class MessageSchema(BaseModel):
-    odata_etag: Optional[str] = Field(None, alias="@odata.etag")
+    odata_type: Optional[str] = Field(None, alias="@odata.type")
+    odata_etag: str = Field(None, alias="@odata.etag")
     id: str
     createdDateTime: str
     lastModifiedDateTime: str
     changeKey: str
     categories: List
     receivedDateTime: str
-    sentDateTime: str
+    sentDateTime: Optional[str]
     hasAttachments: bool
     internetMessageId: str
     subject: str
@@ -77,13 +77,24 @@ class MessageSchema(BaseModel):
     webLink: str
     inferenceClassification: str
     body: Optional[MessageBodySchema]
-    sender: EmailAddressWrapperSchema
-    from_email: EmailAddressWrapperSchema = Field(None, alias="from")
-    toRecipients: List[EmailAddressWrapperSchema]
+    sender: Optional[EmailAddressWrapperSchema]  # Optional, isDraft= True
+    from_email: Optional[EmailAddressWrapperSchema] = Field(None, alias="from")  # Optional, isDraft= True
+    toRecipients: Optional[List[EmailAddressWrapperSchema]]
     ccRecipients: List[EmailAddressWrapperSchema]
     bccRecipients: List[EmailAddressWrapperSchema]
     replyTo: List[EmailAddressWrapperSchema]
     flag: MessageFlagSchema
+    # Optional, odata_type = '#microsoft.graph.eventMessageResponse'
+    meetingMessageType: Optional[str]
+    type: Optional[str]
+    isOutOfDate: Optional[bool]
+    isAllDay: Optional[bool]
+    isDelegated: Optional[bool]
+    responseType: Optional[str]
+    startDateTime: Optional[dict]
+    endDateTime: Optional[dict]
+    location: Optional[dict]
+    recurrence: Optional[Any]
 
 
 class MessageResponseSchema(MessageSchema, ODataContextSchema):
@@ -120,13 +131,17 @@ class AttachmentInCreateMessage(BaseModel):
     contentType: str
     contentBytes: str
 
+    # class Config:
+    #     allow_population_by_field_name = True
+
 
 class CreateMessageSchema(BaseModel):
     subject: Optional[str]
     body: Optional[MessageBodySchema]
     toRecipients: List[EmailAddressWrapperSchema]
     ccRecipients: Optional[List[EmailAddressWrapperSchema]]
-    attachments: Optional[List[AttachmentInCreateMessage]]
+    attachments: Union[Optional[List[AttachmentInCreateMessage]], Optional[List[dict]]]
+    # attachments: Optional[List[dict]]
 
 
 class SendMessageRequestSchema(BaseModel):

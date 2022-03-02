@@ -14,6 +14,7 @@ class GlobalConfig(BaseModel):
     db_pwd: str
     db_sales97_name: str
     db_fit_name: str
+    db_mailstore_name: str
 
     aws_access_key_id: str
     aws_access_secret: str
@@ -21,6 +22,7 @@ class GlobalConfig(BaseModel):
     aws_output: str
     s3_root_bucket: str
     s3_default_object_prefix: str
+    disk_base_path: str
 
 
 class GlobalConfigHelper:

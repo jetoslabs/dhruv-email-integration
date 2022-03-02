@@ -53,6 +53,7 @@ class ApiClient:
             except asyncio.exceptions.TimeoutError as e:
                 last_error = e
                 logger.bind(error=e).error(f"TimeoutError.. retrying.. {i+1}/{retries}")
+                continue
         raise last_error
 
     @staticmethod

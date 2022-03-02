@@ -1,7 +1,11 @@
 tenant: "SYSTEM"
 
 # DB
-db_url: "dialect+driver://user:password@host:port/database"
+db_url: "dialect+driver://user:<db_pwd>@host:port/<db_name>"
+db_pwd: "abcdefg"
+db_sales97_name: "db1"
+db_fit_name: "db2"
+db_mailstore_name: "db3"
 # AWS
 aws_access_key_id: "key"
 aws_access_secret: "secret"

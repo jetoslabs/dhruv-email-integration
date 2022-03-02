@@ -24,14 +24,14 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         """
         self.model = model
 
-    def get(self, db: Session, id: Any) -> Optional[ModelType]:
-        return db.query(self.model).filter(self.model.id == id).first()
+    def get(self, db: Session, seq_no: Any) -> Optional[ModelType]:
+        return db.query(self.model).filter(self.model.SeqNo == seq_no).first()
 
     def get_multi(self, db: Session, *, skip: int = 0, limit: int = 100) -> List[ModelType]:
-        return db.query(self.model).order_by(self.model.id).offset(skip).limit(limit).all()
+        return db.query(self.model).order_by(self.model.SeqNo).offset(skip).limit(limit).all()
 
-    def exists(self, db: Session, *, id: Any) -> bool:
-        return db.query(id).filter(self.model.id == id).first() is not None
+    def exists(self, db: Session, *, SeqNo: Any) -> bool:
+        return db.query(SeqNo).filter(self.model.id == SeqNo).first() is not None
 
     def create(self, db: Session, *, obj_in: CreateSchemaType) -> ModelType:
         obj_in_data = jsonable_encoder(obj_in)
@@ -65,8 +65,8 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db.refresh(db_obj)
         return db_obj
 
-    def remove(self, db: Session, *, id: int) -> ModelType:
-        obj = db.query(self.model).get(id)
+    def remove(self, db: Session, *, seq_no: int) -> ModelType:
+        obj = db.query(self.model).get(seq_no)
         db.delete(obj)
         db.commit()
         return obj

@@ -16,8 +16,7 @@ from app.core.auth import get_auth_config_and_confidential_client_application_an
 from app.crud.stored_procedures import StoredProcedures
 from app.models.se_correspondence import SECorrespondence
 from app.schemas.schema_ms_graph import MessagesSchema, MessageResponseSchema, AttachmentsSchema, \
-    SendMessageRequestSchema, CreateMessageSchema, MessageBodySchema, EmailAddressWrapperSchema, EmailAddressSchema, \
-    AttachmentInCreateMessage, UserResponseSchema, MessageSchema, UserSchema
+    SendMessageRequestSchema, UserResponseSchema, MessageSchema, UserSchema
 from app.schemas.schema_sp import EmailTrackerGetEmailIDSchema, EmailTrackerGetEmailLinkInfo, \
     EmailTrackerGetEmailLinkInfoParams
 
@@ -94,37 +93,6 @@ async def save_message_attachments(
             correlation_id=token.get("correlation_id")
         ).error("Unauthorized")
         raise HTTPException(status_code=401)
-    #     links = []
-    #     data: Union[dict, AttachmentsSchema] = await list_message_attachments(tenant, id, message_id)
-    #     if type(data) == dict: data = AttachmentsSchema(**data)
-    #     attachments: List[AttachmentSchema] = data.value
-    #     for attachment in attachments:
-    #         if attachment.contentBytes is not None:
-    #             logger.bind(filename=attachment.name, content_length=len(attachment.contentBytes)).debug("attachment")
-    #             filename = attachment.name
-    #             content_b64 = attachment.contentBytes
-    #             # contentBytes is base64 encoded str
-    #             content = base64.b64decode(content_b64)
-    #             id_record = CRUDSECorrespondence(SECorrespondence).get_by_mail_unique_id(db, mail_unique_id=message_id)
-    #             if id_record is None:
-    #                 # raise HTTPException(status_code=500)
-    #                 logger.bind().error("Cannot find mail_id")
-    #             file_relative_path = get_attachments_path_from_id(id_record.SeqNo)
-    #             saved_to = await FileHelper.get_or_save_get_in_disk(
-    #                 BytesIO(content), global_config.disk_base_path, file_relative_path, filename
-    #             )
-    #             logger.bind(saved_to=saved_to).info("Saved to disk")
-    #             links.append(saved_to)
-    #         else:
-    #             logger.bind(attachment=attachment).info("No content")
-    #     if len(links) == 0:
-    #         # raise HTTPException(status_code=204, detail="Nothing saved") # TODO: bring back in some form
-    #         pass
-    #     return links
-    # else:
-    #     print(token.get("error"))
-    #     print(token.get("error_description"))
-    #     print(token.get("correlation_id"))  # You may need this when reporting a bug
 
 
 @router.get("/users/{id}/messages/{message_id}/save")
@@ -158,31 +126,6 @@ async def save_message(
             message_links = await save_message_attachments(tenant, id, se_correspondence_row.MailUniqueId, db_mailstore)
             links.append(",".join(message_links))
         return se_correspondence_rows, links
-        # # get email link info from dhruv
-        # emailTrackerGetEmailLinkInfoParams = EmailTrackerGetEmailLinkInfoParams(
-        #     email=message.from_email.emailAddress.address,
-        #     date=message.sentDateTime  #
-        # )
-        # email_links_info = await StoredProcedures.dhruv_EmailTrackerGetEmailLinkInfo(
-        #     db,
-        #     emailTrackerGetEmailLinkInfoParams
-        # )
-        # email_link_info: EmailTrackerGetEmailLinkInfo = email_links_info[0]
-        # if email_link_info.AccountCode == '':
-        #     logger.bind(
-        #         emailTrackerGetEmailLinkInfoParams=emailTrackerGetEmailLinkInfoParams
-        #     ).error("No link found in Dhruv, EmailTrackerGetEmailLinkInfo result is empty")
-        #     return
-        #
-        # # save message to SECorrespondence table
-        # loop_start_epoch: str = str(int(time.time()))
-        # obj_in = map_MessageResponseSchema_to_SECorrespondenceCreate(
-        #     message, email_link_info, loop_start_epoch
-        # )
-        #
-        # new_row = CRUDSECorrespondence(SECorrespondence).create(db, obj_in=obj_in)
-        # links = await save_message_attachments(tenant, id, message_id)
-        # return new_row
     else:
         logger.bind(
             error=token.get("error"),
@@ -289,39 +232,21 @@ async def save_tenant_messages(
 
 
 @router.post("/users/{id}/sendMail", status_code=202)
-async def send_mail(tenant: str, id: str):
+async def send_mail(tenant: str, id: str, message: SendMessageRequestSchema):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
-        message_to_send = SendMessageRequestSchema(
-            message=CreateMessageSchema(
-                subject="program mail send 2",
-                body=MessageBodySchema(
-                    contentType="HTML",
-                    content="okokok___okokok 2"
-                ),
-                toRecipients=[EmailAddressWrapperSchema(
-                    emailAddress=EmailAddressSchema(
-                        name="Adele Vance",
-                        address="AdeleV@26cfkx.onmicrosoft.com"
-                    )
-                )],
-                ccRecipients=[EmailAddressWrapperSchema(
-                    emailAddress=EmailAddressSchema(
-                        name="Adele Vance",
-                        address="AdeleV@26cfkx.onmicrosoft.com"
-                    )
-                )],
-                attachments=[
-                    AttachmentInCreateMessage(
-                        odata_type="#microsoft.graph.fileAttachment",
-                        name="attachment.txt",
-                        contentType="text/plain",
-                        contentBytes="SGVsbG8gV29ybGQh"
-                    )
-                ]
-            )
-        )
-
+        attachments: List[dict] = []
+        if message.message.attachments and len(message.message.attachments) > 0:
+            for attachment in message.message.attachments:
+                # NOTE: Converting to dict for field '@odata.type'
+                attachment_dict = {
+                    '@odata.type': attachment.odata_type,
+                    'name': attachment.name,
+                    'contentType': attachment.contentType,
+                    'contentBytes': attachment.contentBytes
+                }
+                attachments.append(attachment_dict)
+        message.message.attachments = attachments
         endpoint = MsEndpointsHelper.get_endpoint("message:send", endpoints_ms)
         endpoint.request_params["id"] = id
         url = MsEndpointHelper.form_url(endpoint)
@@ -329,7 +254,7 @@ async def send_mail(tenant: str, id: str):
             endpoint.request_method,
             url,
             headers=ApiClient.get_headers(token),
-            data=message_to_send.json(),
+            data=message.json(),
             timeout_sec=3000)
         api_client.headers['content-type'] = "application/json"
         response_and_data: Tuple[ClientResponse, str] = await api_client.retryable_call()

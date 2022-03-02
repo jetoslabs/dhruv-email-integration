@@ -1,5 +1,4 @@
-from datetime import time
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Union
 
 from pydantic import BaseModel, Field
 
@@ -41,7 +40,7 @@ class MessageBodySchema(BaseModel):
 
 
 class EmailAddressSchema(BaseModel):
-    name: str
+    name: Optional[str]
     address: Optional[str]
 
 
@@ -62,7 +61,7 @@ class MessageSchema(BaseModel):
     changeKey: str
     categories: List
     receivedDateTime: str
-    sentDateTime: str
+    sentDateTime: Optional[str]
     hasAttachments: bool
     internetMessageId: str
     subject: str
@@ -132,13 +131,17 @@ class AttachmentInCreateMessage(BaseModel):
     contentType: str
     contentBytes: str
 
+    # class Config:
+    #     allow_population_by_field_name = True
+
 
 class CreateMessageSchema(BaseModel):
     subject: Optional[str]
     body: Optional[MessageBodySchema]
     toRecipients: List[EmailAddressWrapperSchema]
     ccRecipients: Optional[List[EmailAddressWrapperSchema]]
-    attachments: Optional[List[AttachmentInCreateMessage]]
+    attachments: Union[Optional[List[AttachmentInCreateMessage]], Optional[List[dict]]]
+    # attachments: Optional[List[dict]]
 
 
 class SendMessageRequestSchema(BaseModel):

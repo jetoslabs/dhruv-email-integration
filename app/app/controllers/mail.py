@@ -29,7 +29,7 @@ class MailController:
         endpoint = MsEndpointsHelper.get_endpoint("message:list", endpoints_ms)
         endpoint.request_params['id'] = user_id
         endpoint.optional_query_params.top = str(top) if 0 < top <= 1000 else str(10)
-        new_filter = add_filter_to_leave_out_internal_domain_messages(tenant, filter)
+        new_filter = filter  # add_filter_to_leave_out_internal_domain_messages(tenant, filter)
         if new_filter != "":
             endpoint.optional_query_params.filter = new_filter
         url = MsEndpointHelper.form_url(endpoint)
@@ -169,6 +169,7 @@ class MailProcessor:
     ) -> Optional[SECorrespondenceCreate]:
         obj_in: Optional[SECorrespondenceCreate] = None
         if not MailProcessor.is_internal_address(tenant, email_address):
+            logger.bind(email=email_address, message=message.id).debug("process_or_discard_message")
             email_link_info: EmailTrackerGetEmailLinkInfo = await MailProcessor.get_email_link_from_dhruv(
                 email_address, message.sentDateTime, db_fit
             )

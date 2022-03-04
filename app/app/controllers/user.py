@@ -5,7 +5,7 @@ from app.apiclients.endpoint_ms import MsEndpointsHelper, endpoints_ms, MsEndpoi
 from app.schemas.schema_ms_graph import UsersSchema
 
 
-class UsersController:
+class UserController:
 
     @staticmethod
     async def get_users(token: Any, top: int, select: str, filter: str) -> UsersSchema:

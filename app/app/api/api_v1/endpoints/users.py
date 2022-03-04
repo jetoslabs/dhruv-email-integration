@@ -5,7 +5,7 @@ from fastapi import APIRouter
 
 from app.apiclients.api_client import ApiClient
 from app.apiclients.endpoint_ms import endpoints_ms, MsEndpointsHelper, MsEndpointHelper
-from app.controllers.users import UsersController
+from app.controllers.user import UserController
 from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
 from app.schemas.schema_ms_graph import UsersSchema, UserResponseSchema, UserSchema
 
@@ -16,7 +16,7 @@ router = APIRouter()
 async def get_users(tenant: str, top: int = 5, select: str = "", filter: str = "") -> UsersSchema:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
-        users_schema = await UsersController.get_users(token, top, select, filter)
+        users_schema = await UserController.get_users(token, top, select, filter)
         return users_schema
     else:
         print(token.get("error"))

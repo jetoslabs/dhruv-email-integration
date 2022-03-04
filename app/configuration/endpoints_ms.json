@@ -6,7 +6,7 @@
       "request_method" : "get",
       "request_path_template": "/users",
       "request_params": {},
-      "optional_query_params": {"$top": ""}
+      "optional_query_params": {"$top": "", "$select": "", "$filter": ""}
     },
     "user:get": {
       "application_permissions" : ["User.Read.All", "User.ReadWrite.All", "Directory.Read.All", "Directory.ReadWrite.All"],

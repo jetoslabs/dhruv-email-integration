@@ -21,8 +21,8 @@ class UserSchema(BaseModel):
     officeLocation: Optional[str]
     preferredLanguage: Optional[str]
     surname: Optional[str]
-    userPrincipalName: str
-    id: str
+    userPrincipalName: Optional[str]
+    id: Optional[str]
 
 
 class UserResponseSchema(UserSchema, ODataContextSchema):

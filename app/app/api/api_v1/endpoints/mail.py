@@ -11,7 +11,8 @@ from app.api import deps
 from app.api.api_v1.endpoints.users import get_user_by_email, get_user
 from app.apiclients.api_client import ApiClient
 from app.apiclients.endpoint_ms import MsEndpointsHelper, endpoints_ms, MsEndpointHelper
-from app.controllers.mail import MailController
+from app.controllers.mail import MailController, \
+    map_inplace_SendMessageRequestSchema_to_msgrapgh_SendMessageRequestSchema
 from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
 from app.crud.stored_procedures import StoredProcedures
 from app.models.se_correspondence import SECorrespondence
@@ -235,18 +236,8 @@ async def save_tenant_messages(
 async def send_mail(tenant: str, id: str, message: SendMessageRequestSchema):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
-        attachments: List[dict] = []
-        if message.message.attachments and len(message.message.attachments) > 0:
-            for attachment in message.message.attachments:
-                # NOTE: Converting to dict for field '@odata.type'
-                attachment_dict = {
-                    '@odata.type': attachment.odata_type,
-                    'name': attachment.name,
-                    'contentType': attachment.contentType,
-                    'contentBytes': attachment.contentBytes
-                }
-                attachments.append(attachment_dict)
-        message.message.attachments = attachments
+        message: SendMessageRequestSchema = \
+            map_inplace_SendMessageRequestSchema_to_msgrapgh_SendMessageRequestSchema(message)
         endpoint = MsEndpointsHelper.get_endpoint("message:send", endpoints_ms)
         endpoint.request_params["id"] = id
         url = MsEndpointHelper.form_url(endpoint)

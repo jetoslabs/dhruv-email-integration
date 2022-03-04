@@ -18,7 +18,7 @@ from app.crud.stored_procedures import StoredProcedures
 from app.models.se_correspondence import SECorrespondence
 from app.schemas.schema_db import SECorrespondenceCreate
 from app.schemas.schema_ms_graph import MessageResponseSchema, MessageSchema, MessagesSchema, AttachmentsSchema, \
-    AttachmentSchema, UserResponseSchema
+    AttachmentSchema, UserResponseSchema, SendMessageRequestSchema
 from app.schemas.schema_sp import EmailTrackerGetEmailLinkInfo, EmailTrackerGetEmailLinkInfoParams
 
 
@@ -299,3 +299,19 @@ def map_MessageSchema_to_SECorrespondenceCreate(
         UpdPlace=loop_start_epoch,
     )
     return obj_in
+
+
+def map_inplace_SendMessageRequestSchema_to_msgrapgh_SendMessageRequestSchema(message: SendMessageRequestSchema):
+    attachments: List[dict] = []
+    if message.message.attachments and len(message.message.attachments) > 0:
+        for attachment in message.message.attachments:
+            # NOTE: Converting to dict for field '@odata.type'
+            attachment_dict = {
+                '@odata.type': attachment.odata_type,
+                'name': attachment.name,
+                'contentType': attachment.contentType,
+                'contentBytes': attachment.contentBytes
+            }
+            attachments.append(attachment_dict)
+    message.message.attachments = attachments
+    return message

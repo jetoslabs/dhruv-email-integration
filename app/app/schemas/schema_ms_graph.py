@@ -126,9 +126,9 @@ class AttachmentsSchema(ODataNextLinkSchema, ODataContextSchema):
 
 
 class AttachmentInCreateMessage(BaseModel):
-    odata_type: str = Field(None, alias="@odata.type")
+    odata_type: str = Field(None, alias="@odata.type")  # "#microsoft.graph.fileAttachment"
     name: str
-    contentType: str
+    contentType: str  # = Field("text/plain")
     contentBytes: str
 
     # class Config:

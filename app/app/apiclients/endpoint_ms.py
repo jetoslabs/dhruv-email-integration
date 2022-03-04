@@ -20,10 +20,10 @@ class MsEndpointHelper:
             for param_name, param_value in endpoint.optional_query_params.dict().items():
                 if param_value and '<' not in param_value and '>' not in param_value:
                     if is_first_param_added is False:
-                        result_url = f"{result_url}?{param_name}={param_value}"
+                        result_url = f"{result_url}?${param_name}={param_value}"
                         is_first_param_added = True
                     elif is_first_param_added is True:
-                        result_url = f"{result_url}&{param_name}={param_value}"
+                        result_url = f"{result_url}&${param_name}={param_value}"
         return result_url
 
     @staticmethod

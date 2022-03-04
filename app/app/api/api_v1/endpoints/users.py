@@ -5,6 +5,7 @@ from fastapi import APIRouter
 
 from app.apiclients.api_client import ApiClient
 from app.apiclients.endpoint_ms import endpoints_ms, MsEndpointsHelper, MsEndpointHelper
+from app.controllers.common import raise_http_exception
 from app.controllers.user import UserController
 from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
 from app.schemas.schema_ms_graph import UsersSchema, UserResponseSchema, UserSchema
@@ -19,9 +20,7 @@ async def get_users(tenant: str, top: int = 5, select: str = "", filter: str = "
         users_schema = await UserController.get_users(token, top, select, filter)
         return users_schema
     else:
-        print(token.get("error"))
-        print(token.get("error_description"))
-        print(token.get("correlation_id"))  # You may need this when reporting a bug
+        raise_http_exception(token, 401)
 
 
 @router.get("/users/{user_id}", response_model=UserResponseSchema)

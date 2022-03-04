@@ -11,6 +11,7 @@ class EmailTrackerGetEmailLinkInfoParams(BaseModel):
     email: str
     empty: str = ''
     date: str
+    conversation_id_44: str
 
 
 class EmailTrackerGetEmailLinkInfo(BaseModel):

@@ -7,7 +7,6 @@ from typing import Any, Optional, List
 from loguru import logger
 from sqlalchemy.orm import Session
 
-from app.api.api_v1.endpoints.users import get_user
 from app.apiclients.api_client import ApiClient
 from app.apiclients.endpoint_ms import MsEndpointHelper, MsEndpointsHelper, endpoints_ms
 from app.apiclients.file_client import FileHelper
@@ -59,9 +58,6 @@ class MailController:
         se_correspondence_rows = CRUDSECorrespondence(SECorrespondence)\
             .get_by_mail_unique_id_or_create_get_if_not_exist_multi(db_mailstore, obj_ins=processed_messages)
         return se_correspondence_rows
-
-
-
 
     @staticmethod
     async def get_message(token: Any, user_id: str, message_id: str) -> Optional[MessageResponseSchema]:
@@ -180,9 +176,9 @@ class MailProcessor:
         return obj_in
 
     @staticmethod
-    async def get_email_link_from_dhruv(email: str, date: str, db: Session) -> EmailTrackerGetEmailLinkInfo:
+    async def get_email_link_from_dhruv(email: str, date: str, conversation_id_44: str, db: Session) -> EmailTrackerGetEmailLinkInfo:
         # get email link info from dhruv
-        email_link_info_params = EmailTrackerGetEmailLinkInfoParams(email=email, date=date)
+        email_link_info_params = EmailTrackerGetEmailLinkInfoParams(email=email, date=date, conversation_id_44=conversation_id_44)
         email_links_info = \
             await StoredProcedures.dhruv_EmailTrackerGetEmailLinkInfo(db, email_link_info_params)
         return email_links_info[0]
@@ -208,6 +204,7 @@ class MailProcessor:
     def is_external_address(tenant: str, address: str):
         return not MailProcessor.is_internal_address(tenant, address)
 
+
 def get_attachments_path_from_id(id: int, *, min_length=6) -> str:
     """
     converts int to str of min_length and then splits each digit with "/"
@@ -227,7 +224,6 @@ def get_attachments_path_from_id(id: int, *, min_length=6) -> str:
     return path
 
 
-
 def add_filter_to_leave_out_internal_domain_messages(tenant_id: str, filter: str) -> str:
     tenant_ms_auth_config = get_ms_auth_config(tenant_id)
     internal_domains: list = tenant_ms_auth_config.internal_domains
@@ -239,37 +235,6 @@ def add_filter_to_leave_out_internal_domain_messages(tenant_id: str, filter: str
     return new_filter
 
 
-def map_MessageResponseSchema_to_SECorrespondenceCreate(
-        message: MessageResponseSchema,
-        email_link_info: EmailTrackerGetEmailLinkInfo,
-        loop_start_epoch: str
-) -> SECorrespondenceCreate:
-    curr_date_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-    obj_in = SECorrespondenceCreate(
-        DocSentDate=datetime.strptime(message.sentDateTime, "%Y-%m-%dT%H:%M:%SZ"),
-        MailUniqueId=message.id,
-        MailSubject=message.subject,
-        MailBody1=message.body.content,
-        MailTo=",".join([toRecipient.emailAddress.address for toRecipient in message.toRecipients]),
-        MailCC="",
-        MailFrom=message.from_email.emailAddress.address,
-        MailBCC="",
-        DocSendOn=datetime.strptime(message.sentDateTime, "%Y-%m-%dT%H:%M:%SZ"),
-        QuoteNo=email_link_info.QuoteNo,
-        BkgNo=email_link_info.BkgNo,
-        AccountCode=email_link_info.AccountCode,
-        IsAttachmentProcessed=False,
-        HasAttachment=message.hasAttachments,
-
-        CrDate=curr_date_time,
-        CrTime=curr_date_time,
-        UpdDate=curr_date_time,
-        UpdTime=curr_date_time,
-        UpdPlace=loop_start_epoch,
-    )
-    return obj_in
-
-
 def map_MessageSchema_to_SECorrespondenceCreate(
         message: MessageSchema,
         email_link_info: EmailTrackerGetEmailLinkInfo,
@@ -278,7 +243,7 @@ def map_MessageSchema_to_SECorrespondenceCreate(
     curr_date_time: datetime = datetime.fromisoformat(datetime.utcnow().isoformat(sep='T', timespec='seconds'))
     obj_in = SECorrespondenceCreate(
         DocSentDate=datetime.strptime(message.sentDateTime, "%Y-%m-%dT%H:%M:%SZ"),
-        MailUniqueId=message.id,
+        MailUniqueId=message.internetMessageId,
         MailSubject=message.subject,
         MailBody1=message.body.content,
         MailTo=",".join([toRecipient.emailAddress.address for toRecipient in message.toRecipients]),
@@ -291,6 +256,8 @@ def map_MessageSchema_to_SECorrespondenceCreate(
         AccountCode=email_link_info.AccountCode,
         IsAttachmentProcessed=False,
         HasAttachment=message.hasAttachments,
+        ConversationId=message.conversationId,
+        ConversationId44=message.conversationId[:44],
 
         CrDate=curr_date_time,
         CrTime=curr_date_time,

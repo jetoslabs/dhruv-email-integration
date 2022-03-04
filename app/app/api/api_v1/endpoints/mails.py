@@ -181,14 +181,14 @@ async def save_user_messages(
         raise HTTPException(status_code=401)
 
 
-async def get_email_link_from_dhruv(email: str, date: str, db: Session) ->  EmailTrackerGetEmailLinkInfo:
-    # get email link info from dhruv
-    emailTrackerGetEmailLinkInfoParams = EmailTrackerGetEmailLinkInfoParams(email=email, date=date)
-    email_links_info = await StoredProcedures.dhruv_EmailTrackerGetEmailLinkInfo(
-        db,
-        emailTrackerGetEmailLinkInfoParams
-    )
-    return email_links_info[0]
+# async def get_email_link_from_dhruv(email: str, date: str, conversation_id_44: str, db: Session) ->  EmailTrackerGetEmailLinkInfo:
+#     # get email link info from dhruv
+#     emailTrackerGetEmailLinkInfoParams = EmailTrackerGetEmailLinkInfoParams(email=email, date=date, conversation_id_44=conversation_id_44)
+#     email_links_info = await StoredProcedures.dhruv_EmailTrackerGetEmailLinkInfo(
+#         db,
+#         emailTrackerGetEmailLinkInfoParams
+#     )
+#     return email_links_info[0]
 
 
 @router.get("/messages1/save")

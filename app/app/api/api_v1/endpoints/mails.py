@@ -14,12 +14,12 @@ from app.apiclients.endpoint_ms import MsEndpointsHelper, endpoints_ms, MsEndpoi
 from app.controllers.mail import MailController, \
     map_inplace_SendMessageRequestSchema_to_msgrapgh_SendMessageRequestSchema
 from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
+from app.crud.crud_se_correspondence import CRUDSECorrespondence
 from app.crud.stored_procedures import StoredProcedures
 from app.models.se_correspondence import SECorrespondence
 from app.schemas.schema_ms_graph import MessagesSchema, MessageResponseSchema, AttachmentsSchema, \
     SendMessageRequestSchema, UserResponseSchema, MessageSchema, UserSchema
-from app.schemas.schema_sp import EmailTrackerGetEmailIDSchema, EmailTrackerGetEmailLinkInfo, \
-    EmailTrackerGetEmailLinkInfoParams
+from app.schemas.schema_sp import EmailTrackerGetEmailIDSchema
 
 router = APIRouter()
 
@@ -230,6 +230,27 @@ async def save_tenant_messages(
                 ).error(f"investigate:\n {e}")
                 continue
         return users, all_rows, all_links
+
+
+@router.get("/messages1/update")
+async def update_tenant_messages(
+        tenant: str,
+        db_mailstore: Session = Depends(deps.get_mailstore_db)
+
+) -> Optional[List[SECorrespondence]]:
+    config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
+    if "access_token" in token:
+        se_correspondence_rows: SECorrespondence = \
+            CRUDSECorrespondence(SECorrespondence).get_where_conversation_id_44_is_empty(db_mailstore)
+        se_correspondence_rows
+        return se_correspondence_rows
+    else:
+        logger.bind(
+            error=token.get("error"),
+            error_description=token.get("error_description"),
+            correlation_id=token.get("correlation_id")
+        ).error("Unauthorized")
+        raise HTTPException(status_code=401)
 
 
 @router.post("/users/{id}/sendMail", status_code=202)

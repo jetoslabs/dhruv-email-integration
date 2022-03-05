@@ -27,8 +27,17 @@ class CRUDSECorrespondence(CRUDBase[SECorrespondence, SECorrespondenceCreate, SE
         return db.query(self.model).filter(self.model.MailUniqueId == mail_unique_id).first()
 
     def get_where_conversation_id_44_is_empty(self, db: Session, *, skip: int = 0, limit: int = 100) -> Optional[SECorrespondence]:
-        return db.query(self.model).with_entities(self.model.SeqNo, self.model.MailUniqueId, self.model.ConversationId, self.model.ConversationId44).where(self.model.MailUniqueId != "").filter(
-            self.model.ConversationId44 == None).order_by(self.model.SeqNo.desc()).offset(skip).limit(limit).all()
+        return db.query(self.model)\
+            .with_entities(self.model.SeqNo,
+                           self.model.MailUniqueId,
+                           self.model.ConversationId,
+                           self.model.ConversationId44)\
+            .where(self.model.MailUniqueId != "")\
+            .filter(self.model.ConversationId44 == None)\
+            .order_by(self.model.SeqNo.desc())\
+            .offset(skip)\
+            .limit(limit)\
+            .all()
 
     def get_by_mail_unique_id_or_create_get_if_not_exist(self, db: Session, *, obj_in: SECorrespondenceCreate) -> Optional[SECorrespondence]:
         db_obj = self.get_by_mail_unique_id(db, mail_unique_id=obj_in.MailUniqueId)

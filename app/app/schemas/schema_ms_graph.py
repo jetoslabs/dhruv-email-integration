@@ -64,7 +64,7 @@ class MessageSchema(BaseModel):
     sentDateTime: Optional[str]
     hasAttachments: bool
     internetMessageId: str
-    subject: str
+    subject: Optional[str]
     bodyPreview: str
     importance: str
     parentFolderId: str

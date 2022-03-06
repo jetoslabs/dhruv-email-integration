@@ -164,7 +164,7 @@ class MailProcessor:
         if not MailProcessor.is_internal_address(tenant, email_address):
             logger.bind(email=email_address, message=message.id).debug("process_or_discard_message")
             email_link_info: EmailTrackerGetEmailLinkInfo = await MailProcessor.get_email_link_from_dhruv(
-                email_address, message.sentDateTime, db_fit
+                email_address, message.sentDateTime, message.conversationId[:44], db_fit
             )
             if len(email_link_info.AccountCode) > 0:
                 obj_in = map_MessageSchema_to_SECorrespondenceCreate(

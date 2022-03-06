@@ -199,7 +199,7 @@ async def save_tenant_messages(
         # get user ids for those email ids
         users: List[UserSchema] = []
         for user_to_track in users_to_track:
-            user = await get_user_by_email(tenant, user_to_track.EMailId)
+            user = await UserController.get_user_by_email(token, user_to_track.EMailId, "")
             if user is None:
                 logger.bind(user_to_track=user_to_track).error("Cannot find in Azure")
             else:

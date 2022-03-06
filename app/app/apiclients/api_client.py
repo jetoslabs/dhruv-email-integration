@@ -8,7 +8,7 @@ from loguru import logger
 
 
 class ApiClient:
-    def __init__(self, method: str, url: str, headers=None, data=None, *, timeout_sec: int = 5, retries: int = 1):
+    def __init__(self, method: str, url: str, headers=None, data=None, *, timeout_sec: int = 5, retries: int = 2):
         self.method = method
         self.url = url
         self.headers = headers

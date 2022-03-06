@@ -2,13 +2,23 @@ import uvicorn
 from fastapi import FastAPI
 from loguru import logger
 
+from app.core.description import description
 from app.core.log import setup_logger
 from app.core.settings import settings
 from app.api.api_v1 import api
 
 
 def create_app():
-    fastapi = FastAPI()
+    fastapi = FastAPI(
+        title=settings.NAME,
+        description=description,
+        version=settings.VERSION,
+        contact={
+            "name": settings.CONTACT_NAME,
+            "url": settings.CONTACT_URL,
+            "email": settings.CONTACT_EMAIL,
+        }
+    )
     fastapi.include_router(router=api.router, prefix=f"/{settings.API_V1_STR}")
     return fastapi
 

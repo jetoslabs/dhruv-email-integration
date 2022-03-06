@@ -32,6 +32,8 @@ class SECorrespondence(Base):
     MailPriority = Column(Integer, default=0)
     PublishToMyDhruvInd = Column(Boolean, default=False)
     IsMailSent = Column(Boolean, default=False)
+    ConversationId = Column(String(80))
+    ConversationId44 = Column(String(44))
     CrUId = Column(String(10), default='AUTO')
     CrDate = Column(DateTime)
     CrTime = Column(DateTime)

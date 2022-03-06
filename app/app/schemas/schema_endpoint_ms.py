@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 class OptionalQueryParams(BaseModel):
     top: Optional[str] = Field(None, alias="$top")
+    select: Optional[str] = Field(None, alias="$select")
     filter: Optional[str] = Field(None, alias="$filter")
     orderby: Optional[str] = Field(None, alias="$orderby")
 

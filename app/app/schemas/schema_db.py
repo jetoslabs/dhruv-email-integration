@@ -18,6 +18,8 @@ class SECorrespondence(BaseModel):
     AccountCode: str
     IsAttachmentProcessed: bool
     HasAttachment: bool
+    ConversationId: str
+    ConversationId44: str
     CrDate: datetime.datetime
     CrTime: datetime.datetime
     UpdDate: datetime.datetime
@@ -30,7 +32,9 @@ class SECorrespondenceCreate(SECorrespondence):
 
 
 class SECorrespondenceUpdate(BaseModel):
-    IsAttachmentProcessed: bool
+    SeqNo: int
+    ConversationId: str
+    ConversationId44: str
 
 
 class CorrespondenceId(BaseModel):

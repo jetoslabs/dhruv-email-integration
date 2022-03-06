@@ -20,7 +20,7 @@ class StoredProcedures:
             db_fit: Session, param_obj: EmailTrackerGetEmailLinkInfoParams
     ) -> List[EmailTrackerGetEmailLinkInfo]:
         # ordered params list
-        params = [param_obj.email, param_obj.empty, param_obj.date]
+        params = [param_obj.email, param_obj.empty, param_obj.date, param_obj.conversation_id_44]
         res: List[Any] = run_stored_procedure(
             db_fit,
             "fit.dbo.dhruv_EmailTrackerGetEmailLinkInfo",

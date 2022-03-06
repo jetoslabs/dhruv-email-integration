@@ -11,14 +11,17 @@ from app.api import deps
 from app.api.api_v1.endpoints.users import get_user_by_email, get_user
 from app.apiclients.api_client import ApiClient
 from app.apiclients.endpoint_ms import MsEndpointsHelper, endpoints_ms, MsEndpointHelper
-from app.controllers.mail import MailController
+from app.controllers.mail import MailController, \
+    map_inplace_SendMessageRequestSchema_to_msgrapgh_SendMessageRequestSchema
+from app.controllers.user import UserController
 from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
+from app.crud.crud_se_correspondence import CRUDSECorrespondence
 from app.crud.stored_procedures import StoredProcedures
 from app.models.se_correspondence import SECorrespondence
+from app.schemas.schema_db import SECorrespondenceUpdate
 from app.schemas.schema_ms_graph import MessagesSchema, MessageResponseSchema, AttachmentsSchema, \
     SendMessageRequestSchema, UserResponseSchema, MessageSchema, UserSchema
-from app.schemas.schema_sp import EmailTrackerGetEmailIDSchema, EmailTrackerGetEmailLinkInfo, \
-    EmailTrackerGetEmailLinkInfoParams
+from app.schemas.schema_sp import EmailTrackerGetEmailIDSchema
 
 router = APIRouter()
 
@@ -180,16 +183,6 @@ async def save_user_messages(
         raise HTTPException(status_code=401)
 
 
-async def get_email_link_from_dhruv(email: str, date: str, db: Session) ->  EmailTrackerGetEmailLinkInfo:
-    # get email link info from dhruv
-    emailTrackerGetEmailLinkInfoParams = EmailTrackerGetEmailLinkInfoParams(email=email, date=date)
-    email_links_info = await StoredProcedures.dhruv_EmailTrackerGetEmailLinkInfo(
-        db,
-        emailTrackerGetEmailLinkInfoParams
-    )
-    return email_links_info[0]
-
-
 @router.get("/messages1/save")
 async def save_tenant_messages(
         tenant: str,
@@ -206,7 +199,7 @@ async def save_tenant_messages(
         # get user ids for those email ids
         users: List[UserSchema] = []
         for user_to_track in users_to_track:
-            user = await get_user_by_email(tenant, user_to_track.EMailId)
+            user = await UserController.get_user_by_email(token, user_to_track.EMailId, "")
             if user is None:
                 logger.bind(user_to_track=user_to_track).error("Cannot find in Azure")
             else:
@@ -231,22 +224,70 @@ async def save_tenant_messages(
         return users, all_rows, all_links
 
 
+@router.get("/messages1/update")
+async def update_tenant_messages(
+        tenant: str,
+        skip: int = 0,
+        limit: int = 100,
+        db_mailstore: Session = Depends(deps.get_mailstore_db)
+
+) -> Optional[List[SECorrespondenceUpdate]]:
+    config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
+    if "access_token" in token:
+        # get some rows that have empty CorrespondenceId44
+        se_correspondence_rows: List[SECorrespondence] = \
+            CRUDSECorrespondence(SECorrespondence).get_where_conversation_id_44_is_empty(db_mailstore, skip=skip, limit=limit)
+        # fetch CorrespondenceId for internetMessageId(MailUniqueId)
+        se_correspondence_updates: List[SECorrespondenceUpdate] = []
+        for se_correspondence_row in se_correspondence_rows:
+            emails = []
+            if se_correspondence_row.MailFrom: emails.append(se_correspondence_row.MailFrom)
+            if se_correspondence_row.MailTo: [emails.append(email) for email in se_correspondence_row.MailTo.split(',')]
+            if se_correspondence_row.MailCC: [emails.append(email) for email in se_correspondence_row.MailCC.split(',')]
+            if se_correspondence_row.MailBCC: [emails.append(email) for email in se_correspondence_row.MailBCC.split(',')]
+            user: Optional[UserSchema]
+            for email in emails:
+                # get user from email
+                user = await UserController.get_user_by_email(token, email, "")
+                if user is None or user.id == "":
+                    continue
+                # get message for a user and a given message_id
+                get_messages_filter = f"internetMessageId eq '{se_correspondence_row.MailUniqueId}'"
+                messages_schema: MessagesSchema = await MailController.get_messages(token, tenant, user.id, 5, get_messages_filter)
+                if len(messages_schema.value) == 0:
+                    continue
+                message = messages_schema.value[0]
+                # create obj for se_correspondence update
+                se_correspondence_update = SECorrespondenceUpdate(
+                    SeqNo=se_correspondence_row.SeqNo,
+                    ConversationId=message.conversationId,
+                    ConversationId44=message.conversationId[:44]
+                )
+                se_correspondence_updates.append(se_correspondence_update)
+                # update SECorrespondence # TODO: move out of loop to process whole list instead of 1 by 1
+                update = CRUDSECorrespondence(SECorrespondence).update_conversation_id(
+                    db_mailstore,
+                    se_correspondence_update=se_correspondence_update
+                )
+                se_correspondence_updates.append(update)
+                break
+            # return users_schema
+        return se_correspondence_updates
+    else:
+        logger.bind(
+            error=token.get("error"),
+            error_description=token.get("error_description"),
+            correlation_id=token.get("correlation_id")
+        ).error("Unauthorized")
+        raise HTTPException(status_code=401)
+
+
 @router.post("/users/{id}/sendMail", status_code=202)
 async def send_mail(tenant: str, id: str, message: SendMessageRequestSchema):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
-        attachments: List[dict] = []
-        if message.message.attachments and len(message.message.attachments) > 0:
-            for attachment in message.message.attachments:
-                # NOTE: Converting to dict for field '@odata.type'
-                attachment_dict = {
-                    '@odata.type': attachment.odata_type,
-                    'name': attachment.name,
-                    'contentType': attachment.contentType,
-                    'contentBytes': attachment.contentBytes
-                }
-                attachments.append(attachment_dict)
-        message.message.attachments = attachments
+        message: SendMessageRequestSchema = \
+            map_inplace_SendMessageRequestSchema_to_msgrapgh_SendMessageRequestSchema(message)
         endpoint = MsEndpointsHelper.get_endpoint("message:send", endpoints_ms)
         endpoint.request_params["id"] = id
         url = MsEndpointHelper.form_url(endpoint)

@@ -21,8 +21,8 @@ class UserSchema(BaseModel):
     officeLocation: Optional[str]
     preferredLanguage: Optional[str]
     surname: Optional[str]
-    userPrincipalName: str
-    id: str
+    userPrincipalName: Optional[str]
+    id: Optional[str]
 
 
 class UserResponseSchema(UserSchema, ODataContextSchema):
@@ -64,7 +64,7 @@ class MessageSchema(BaseModel):
     sentDateTime: Optional[str]
     hasAttachments: bool
     internetMessageId: str
-    subject: str
+    subject: Optional[str]
     bodyPreview: str
     importance: str
     parentFolderId: str
@@ -126,9 +126,9 @@ class AttachmentsSchema(ODataNextLinkSchema, ODataContextSchema):
 
 
 class AttachmentInCreateMessage(BaseModel):
-    odata_type: str = Field(None, alias="@odata.type")
+    odata_type: str = Field(None, alias="@odata.type")  # "#microsoft.graph.fileAttachment"
     name: str
-    contentType: str
+    contentType: str  # = Field("text/plain")
     contentBytes: str
 
     # class Config:

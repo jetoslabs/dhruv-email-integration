@@ -13,10 +13,12 @@ from app.apiclients.api_client import ApiClient
 from app.apiclients.endpoint_ms import MsEndpointsHelper, endpoints_ms, MsEndpointHelper
 from app.controllers.mail import MailController, \
     map_inplace_SendMessageRequestSchema_to_msgrapgh_SendMessageRequestSchema
+from app.controllers.user import UserController
 from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
 from app.crud.crud_se_correspondence import CRUDSECorrespondence
 from app.crud.stored_procedures import StoredProcedures
 from app.models.se_correspondence import SECorrespondence
+from app.schemas.schema_db import SECorrespondenceUpdate
 from app.schemas.schema_ms_graph import MessagesSchema, MessageResponseSchema, AttachmentsSchema, \
     SendMessageRequestSchema, UserResponseSchema, MessageSchema, UserSchema
 from app.schemas.schema_sp import EmailTrackerGetEmailIDSchema
@@ -229,32 +231,48 @@ async def update_tenant_messages(
         limit: int = 100,
         db_mailstore: Session = Depends(deps.get_mailstore_db)
 
-) -> Optional[List[SECorrespondence]]:
+) -> Optional[List[SECorrespondenceUpdate]]:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         # get some rows that have empty CorrespondenceId44
-        se_correspondence_rows: Optional[List[SECorrespondence]] = \
+        se_correspondence_rows: List[SECorrespondence] = \
             CRUDSECorrespondence(SECorrespondence).get_where_conversation_id_44_is_empty(db_mailstore, skip=skip, limit=limit)
         # fetch CorrespondenceId for internetMessageId(MailUniqueId)
+        se_correspondence_updates: List[SECorrespondenceUpdate] = []
         for se_correspondence_row in se_correspondence_rows:
-            emails = se_correspondence_row.MailFrom.join(
-                email for email in se_correspondence_row.MailTo.split(',')
-            ).join(
-                email for email in se_correspondence_row.MailCC.split(',')
-            ).join(
-                email for email in se_correspondence_row.MailBCC.split(',')
-            )
-            # for email in emails:
-            #     user: Optional[UserSchema] = UserController.get_user_by_email(token)........
-
-
-            # top = 5
-            # select = f""
-            # filter = f"{}"
-            # users_schema = await MailController.get_messages(token, tenant, top, select, filter)
-            # ......
+            emails = []
+            if se_correspondence_row.MailFrom: emails.append(se_correspondence_row.MailFrom)
+            if se_correspondence_row.MailTo: [emails.append(email) for email in se_correspondence_row.MailTo.split(',')]
+            if se_correspondence_row.MailCC: [emails.append(email) for email in se_correspondence_row.MailCC.split(',')]
+            if se_correspondence_row.MailBCC: [emails.append(email) for email in se_correspondence_row.MailBCC.split(',')]
+            user: Optional[UserSchema]
+            for email in emails:
+                # get user from email
+                user = await UserController.get_user_by_email(token, email, "")
+                if user is None or user.id == "":
+                    continue
+                # get message for a user and a given message_id
+                get_messages_filter = f"internetMessageId eq '{se_correspondence_row.MailUniqueId}'"
+                messages_schema: MessagesSchema = await MailController.get_messages(token, tenant, user.id, 5, get_messages_filter)
+                if len(messages_schema.value) == 0:
+                    continue
+                message = messages_schema.value[0]
+                # create obj for se_correspondence update
+                se_correspondence_update = SECorrespondenceUpdate(
+                    SeqNo=se_correspondence_row.SeqNo,
+                    ConversationId=message.conversationId,
+                    ConversationId44=message.conversationId[:44]
+                )
+                se_correspondence_updates.append(se_correspondence_update)
+                # update SECorrespondence # TODO: move out of loop to process whole list instead of 1 by 1
+                update = CRUDSECorrespondence(SECorrespondence).update_conversation_id(
+                    db_mailstore,
+                    se_correspondence_update=se_correspondence_update
+                )
+                se_correspondence_updates.append(update)
+                break
             # return users_schema
-        return se_correspondence_rows
+        return se_correspondence_updates
     else:
         logger.bind(
             error=token.get("error"),

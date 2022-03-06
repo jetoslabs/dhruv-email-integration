@@ -33,7 +33,8 @@ class SECorrespondenceCreate(SECorrespondence):
 
 class SECorrespondenceUpdate(BaseModel):
     SeqNo: int
-    IsAttachmentProcessed: bool
+    ConversationId: str
+    ConversationId44: str
 
 
 class CorrespondenceId(BaseModel):

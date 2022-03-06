@@ -34,10 +34,7 @@ class MailController:
         url = MsEndpointHelper.form_url(endpoint)
         api_client = ApiClient(endpoint.request_method, url, headers=ApiClient.get_headers(token), timeout_sec=30)
         response, data = await api_client.retryable_call()
-        try:  # TODO: remove try catch
-            return MessagesSchema(**data) if type(data) == dict else data
-        except Exception as e:
-            logger.bind().error(e)
+        return MessagesSchema(**data)
 
     # @staticmethod # use save_messages: use a list
     # async def save_message(message: MessageSchema):

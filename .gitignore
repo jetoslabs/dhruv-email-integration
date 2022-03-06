@@ -4,5 +4,6 @@
 **/global_config.yml
 **/ms_auth_configs.json
 **/**/config.yml
+**/config.yml
 
 **/__pycache__/

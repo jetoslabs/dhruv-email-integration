@@ -3,7 +3,7 @@
 
 **/global_config.yml
 **/ms_auth_configs.json
-**/**/config.yml
 **/config.yml
+**/configuration/rbrgroup/config.yml
 
 **/__pycache__/

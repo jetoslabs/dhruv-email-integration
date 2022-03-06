@@ -26,7 +26,7 @@ class CRUDSECorrespondence(CRUDBase[SECorrespondence, SECorrespondenceCreate, SE
     def get_by_mail_unique_id(self, db: Session, *, mail_unique_id: str) -> Optional[SECorrespondence]:
         return db.query(self.model).filter(self.model.MailUniqueId == mail_unique_id).first()
 
-    def get_where_conversation_id_44_is_empty(self, db: Session, *, skip: int = 0, limit: int = 100) -> Optional[SECorrespondence]:
+    def get_where_conversation_id_44_is_empty(self, db: Session, *, skip: int = 0, limit: int = 100) -> Optional[List[SECorrespondence]]:
         return db.query(self.model)\
             .with_entities(self.model.SeqNo,
                            self.model.MailUniqueId,

@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from app.apiclients.api_client import ApiClient
 from app.apiclients.endpoint_ms import endpoints_ms, MsEndpointsHelper, MsEndpointHelper
@@ -44,16 +44,9 @@ async def get_user(tenant: str, user_id: str) -> UserResponseSchema:
 async def get_user_by_email(tenant: str, user_email: str) -> Optional[UserSchema]:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
-        users_schema: UsersSchema = await get_users(tenant)
-        if type(users_schema) == dict:
-            users_schema = UsersSchema(**users_schema)
-        if users_schema.value is None or len(users_schema.value) == 0:
-            return
-        users = users_schema.value
-        for user in users:
-            if user.mail == user_email:
-                return user
+        user: Optional[UserSchema] = await UserController.get_user_by_email(token, user_email, "")
+        if user is None:
+            raise HTTPException(status_code=404)
+        return user
     else:
-        print(token.get("error"))
-        print(token.get("error_description"))
-        print(token.get("correlation_id"))  # You may need this when reporting a bug
+        raise_http_exception(token, 401, "Unauthorized")

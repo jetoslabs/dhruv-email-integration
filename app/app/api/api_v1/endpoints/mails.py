@@ -181,16 +181,6 @@ async def save_user_messages(
         raise HTTPException(status_code=401)
 
 
-# async def get_email_link_from_dhruv(email: str, date: str, conversation_id_44: str, db: Session) ->  EmailTrackerGetEmailLinkInfo:
-#     # get email link info from dhruv
-#     emailTrackerGetEmailLinkInfoParams = EmailTrackerGetEmailLinkInfoParams(email=email, date=date, conversation_id_44=conversation_id_44)
-#     email_links_info = await StoredProcedures.dhruv_EmailTrackerGetEmailLinkInfo(
-#         db,
-#         emailTrackerGetEmailLinkInfoParams
-#     )
-#     return email_links_info[0]
-
-
 @router.get("/messages1/save")
 async def save_tenant_messages(
         tenant: str,
@@ -235,14 +225,35 @@ async def save_tenant_messages(
 @router.get("/messages1/update")
 async def update_tenant_messages(
         tenant: str,
+        skip: int = 0,
+        limit: int = 100,
         db_mailstore: Session = Depends(deps.get_mailstore_db)
 
 ) -> Optional[List[SECorrespondence]]:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
-        se_correspondence_rows: SECorrespondence = \
-            CRUDSECorrespondence(SECorrespondence).get_where_conversation_id_44_is_empty(db_mailstore)
-        se_correspondence_rows
+        # get some rows that have empty CorrespondenceId44
+        se_correspondence_rows: Optional[List[SECorrespondence]] = \
+            CRUDSECorrespondence(SECorrespondence).get_where_conversation_id_44_is_empty(db_mailstore, skip=skip, limit=limit)
+        # fetch CorrespondenceId for internetMessageId(MailUniqueId)
+        for se_correspondence_row in se_correspondence_rows:
+            emails = se_correspondence_row.MailFrom.join(
+                email for email in se_correspondence_row.MailTo.split(',')
+            ).join(
+                email for email in se_correspondence_row.MailCC.split(',')
+            ).join(
+                email for email in se_correspondence_row.MailBCC.split(',')
+            )
+            # for email in emails:
+            #     user: Optional[UserSchema] = UserController.get_user_by_email(token)........
+
+
+            # top = 5
+            # select = f""
+            # filter = f"{}"
+            # users_schema = await MailController.get_messages(token, tenant, top, select, filter)
+            # ......
+            # return users_schema
         return se_correspondence_rows
     else:
         logger.bind(

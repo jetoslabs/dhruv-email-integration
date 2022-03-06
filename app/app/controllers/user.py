@@ -1,8 +1,8 @@
-from typing import Any
+from typing import Any, Optional
 
 from app.apiclients.api_client import ApiClient
 from app.apiclients.endpoint_ms import MsEndpointsHelper, endpoints_ms, MsEndpointHelper
-from app.schemas.schema_ms_graph import UsersSchema
+from app.schemas.schema_ms_graph import UsersSchema, UserSchema
 
 
 class UserController:
@@ -18,3 +18,14 @@ class UserController:
         url = MsEndpointHelper.form_url(endpoint)
         response, data = await ApiClient('get', url, headers=ApiClient.get_headers(token)).retryable_call()
         return UsersSchema(**data) if type(data) == 'dict' else data
+
+    @staticmethod
+    async def get_user_by_email(token: Any, user_email: str, select: str) -> Optional[UserSchema]:
+        users_schema: UsersSchema = await UserController.get_users(token, 1000, select, "")
+        if users_schema.value is None or len(users_schema.value) == 0:
+            return None
+        users = users_schema.value
+        for user in users:
+            if user.mail == user_email:
+                return user
+        return None

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.apiclients.api_client import ApiClient
 from app.apiclients.endpoint_ms import MsEndpointHelper, MsEndpointsHelper, endpoints_ms
 from app.apiclients.file_client import FileHelper
+from app.controllers.user import UserController
 from app.core.auth import get_ms_auth_config, MsAuthConfig
 from app.core.config import global_config
 from app.crud.crud_se_correspondence import CRUDSECorrespondence
@@ -36,12 +37,22 @@ class MailController:
         response, data = await api_client.retryable_call()
         return MessagesSchema(**data)
 
+    @staticmethod
+    async def get_message(token: Any, user_id: str, message_id: str) -> Optional[MessageResponseSchema]:
+        endpoint = MsEndpointsHelper.get_endpoint("message:get", endpoints_ms)
+        endpoint.request_params["id"] = user_id
+        endpoint.request_params["message_id"] = message_id
+        url = MsEndpointHelper.form_url(endpoint)
+        api_client = ApiClient(endpoint.request_method, url, headers=ApiClient.get_headers(token), timeout_sec=30)
+        response, data = await api_client.retryable_call()
+        return MessageResponseSchema(**data) if type(data) == dict else data
+
     # @staticmethod # use save_messages: use a list
     # async def save_message(message: MessageSchema):
     #     pass
 
     @staticmethod
-    async def save_user_messages(
+    async def process_and_load_to_db_user_messages(
             tenant: str,
             user: UserResponseSchema,
             messages: List[MessageSchema],
@@ -57,14 +68,45 @@ class MailController:
         return se_correspondence_rows
 
     @staticmethod
-    async def get_message(token: Any, user_id: str, message_id: str) -> Optional[MessageResponseSchema]:
-        endpoint = MsEndpointsHelper.get_endpoint("message:get", endpoints_ms)
-        endpoint.request_params["id"] = user_id
-        endpoint.request_params["message_id"] = message_id
-        url = MsEndpointHelper.form_url(endpoint)
-        api_client = ApiClient(endpoint.request_method, url, headers=ApiClient.get_headers(token), timeout_sec=30)
-        response, data = await api_client.retryable_call()
-        return MessageResponseSchema(**data) if type(data) == dict else data
+    async def save_user_messages(
+            token: any,
+            tenant: str,
+            id: str,
+            db_fit: Session,
+            db_mailstore: Session,
+            top: int = 5,
+            filter: str = "",
+    ) -> (List[SECorrespondence], List[str]):
+        req_epoch: str = str(int(time.time()))
+        # get messages
+        messages_schema: Optional[MessagesSchema] = await MailController.get_messages(token, tenant, id, top, filter)
+        messages: Optional[List[MessageSchema]] = None
+        try:
+            messages = messages_schema.value
+        except Exception as e:
+            print(e)
+        if messages is None or len(messages) == 0:
+            logger.bind().error("no messages")
+            return None
+        # get user
+        user_dict:  Optional[UserResponseSchema] = await UserController.get_user(token, id)
+        if user_dict is None:
+            logger.bind().error("no user")
+            return None
+        user: UserResponseSchema = UserResponseSchema(**user_dict)
+        # save messages
+        logger.bind().info("Saving messages")
+        se_correspondence_rows: List[SECorrespondence] = \
+            await MailController.process_and_load_to_db_user_messages(tenant, user, messages, db_fit, db_mailstore, req_epoch)
+        # save attachments
+        logger.bind().info("Saving messages attachments")
+        links = []
+        for message in messages:
+            if message.hasAttachments:
+                logger.bind(message_unique_id=message.internetMessageId).debug("Has attachment(s)")
+                message_links = await MailController.save_message_attachments(db_mailstore, token, id, message.id, message.internetMessageId)
+                links.append(",".join(message_links))
+        return se_correspondence_rows, links
 
     @staticmethod
     async def get_message_attachments(token: Any, user_id: str, message_id: str) -> AttachmentsSchema:
@@ -80,7 +122,25 @@ class MailController:
             logger.bind().error(e)
 
     @staticmethod
-    async def save_message_attachments(db_mailstore, internet_message_id: str, attachments: List[AttachmentSchema]) -> Optional[List[str]]:
+    async def save_message_attachments(
+            db_mailstore: Session, token: Any, user_id: str, message_id: str, internet_message_id: str
+    ) -> Optional[List[str]]:
+        attachments_schema: AttachmentsSchema = await MailController.get_message_attachments(token, user_id, message_id)
+        if attachments_schema is None or attachments_schema.value is None:
+            return None
+        attachments = attachments_schema.value
+        logger.bind(
+            message_id=message_id, attachments="".join([attachment.name for attachment in attachments])
+        ).info("Saving message attachments")
+        links: Optional[List[str]] = await MailController.save_message_attachments_to_disk(
+            db_mailstore,
+            internet_message_id,
+            attachments
+        )
+        return links
+
+    @staticmethod
+    async def save_message_attachments_to_disk(db_mailstore: Session, internet_message_id: str, attachments: List[AttachmentSchema]) -> Optional[List[str]]:
         correspondence: Optional[SECorrespondence] = \
             CRUDSECorrespondence(SECorrespondence).get_by_mail_unique_id(db_mailstore, mail_unique_id=internet_message_id)
         if correspondence is None:
@@ -94,7 +154,6 @@ class MailController:
             content_b64 = attachment.contentBytes
             # contentBytes is base64 encoded str
             content = base64.b64decode(content_b64)
-
             filename = attachment.name
             file_relative_path = get_attachments_path_from_id(correspondence.SeqNo)
             saved_to = await FileHelper.get_or_save_get_in_disk(

@@ -76,23 +76,30 @@ async def list_message_attachments(tenant: str, id: str, message_id: str) -> Att
 
 
 @router.get("/users/{id}/messages/{message_id}/attachments/save", response_model=List[str])
-async def save_message_attachments(tenant: str, id: str, message_id: str, internet_message_id="",
+async def save_message_attachments(tenant: str, id: str, message_id: str, internet_message_id: str = "",
                                    db: Session = Depends(deps.get_mailstore_db)) -> List[str]:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
-        attachments_schema: AttachmentsSchema = await MailController.get_message_attachments(token, id, message_id)
-        if attachments_schema is None or attachments_schema.value is None:
-            # raise HTTPException(status_code=404)
-            return
-        attachments = attachments_schema.value
-        logger.bind(
-            message_id=message_id,
-            attachments="".join([attachment.name for attachment in attachments])
-        ).info("Saving message attachments")
-        links: Optional[List[str]] = await MailController.save_message_attachments(db, internet_message_id, attachments)
+        links = await MailController.save_message_attachments(db, token, id, message_id, internet_message_id)
         if links is None:
-            raise HTTPException(status_code=500)  # links is None when mail is not found in db
+            raise HTTPException(status_code=404)
+        if len(links) == 0:
+            raise HTTPException(status_code=204)
         return links
+        # ....
+        # attachments_schema: AttachmentsSchema = await MailController.get_message_attachments(token, id, message_id)
+        # if attachments_schema is None or attachments_schema.value is None:
+        #     # raise HTTPException(status_code=404)
+        #     return
+        # attachments = attachments_schema.value
+        # logger.bind(
+        #     message_id=message_id,
+        #     attachments="".join([attachment.name for attachment in attachments])
+        # ).info("Saving message attachments")
+        # links: Optional[List[str]] = await MailController.save_message_attachments_to_disk(db, internet_message_id, attachments)
+        # if links is None:
+        #     raise HTTPException(status_code=500)  # links is None when mail is not found in db
+        # return links
     else:
         logger.bind(
             error=token.get("error"),
@@ -112,12 +119,11 @@ async def save_message(
 ):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
-        # message: MessageResponseSchema = await get_message(tenant, id, message_id)
         req_epoch: str = str(int(time.time()))
         # get messages
         message_response_schema: Optional[MessageResponseSchema] = await MailController.get_message(token, id, message_id)
         if message_response_schema is None:
-            raise HTTPException(status_code=204, detail="No messages found")
+            raise HTTPException(status_code=404, detail="No messages found")
         message = MessageSchema(**(message_response_schema.dict()))
         # get user
         user_dict:  Optional[UserResponseSchema] = await get_user(tenant, id)  # TODO: Write UserController.get_user
@@ -126,10 +132,11 @@ async def save_message(
         user: UserResponseSchema = UserResponseSchema(**user_dict)
         # save messages
         se_correspondence_rows: List[SECorrespondence] = \
-            await MailController.save_user_messages(tenant, user, [message], db_fit, db_mailstore, req_epoch)
+            await MailController.process_and_load_to_db_user_messages(tenant, user, [message], db_fit, db_mailstore, req_epoch)
         # save attachments
         links = []
-        message_links = await save_message_attachments(tenant, id, message.id, message.internetMessageId, db=db_mailstore)
+        # message_links = await save_message_attachments(tenant, id, message.id, message.internetMessageId, db=db_mailstore)
+        message_links = await MailController.save_message_attachments(db_mailstore, token, id, message.id, message.internetMessageId)
         links.append(",".join(message_links))
         return se_correspondence_rows, links
     else:
@@ -152,34 +159,39 @@ async def save_user_messages(
 ) -> (List[SECorrespondence], List[str]):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
-        req_epoch: str = str(int(time.time()))
-        # get messages
-        messages_schema: Optional[MessagesSchema] = await MailController.get_messages(token, tenant, id, top, filter)
-        messages: Optional[List[MessageSchema]] = None
-        try:
-            messages = messages_schema.value
-        except Exception as e:
-            print(e)
-        if messages is None or len(messages) == 0:
-            raise HTTPException(status_code=204, detail="No messages found")
-        # get user
-        user_dict:  Optional[UserResponseSchema] = await get_user(tenant, id)  # TODO: Write UserController.get_user
-        if user_dict is None:
-            raise HTTPException(status_code=500)
-        user: UserResponseSchema = UserResponseSchema(**user_dict)
-        # save messages
-        logger.bind().info("Saving messages")
-        se_correspondence_rows: List[SECorrespondence] = \
-            await MailController.save_user_messages(tenant, user, messages, db_fit, db_mailstore, req_epoch)
-        # save attachments
-        logger.bind().info("Saving messages attachments")
-        links = []
-        for message in messages:
-            if message.hasAttachments:
-                logger.bind(message_unique_id=message.internetMessageId).debug("Has attachment(s)")
-                message_links = await save_message_attachments(tenant, id, message.id, message.internetMessageId, db=db_mailstore)
-                links.append(",".join(message_links))
-        return se_correspondence_rows, links
+        se_correspondence_rows, links = \
+            await MailController.save_user_messages(token, tenant, id, db_fit, db_mailstore, top, filter)
+        if len(se_correspondence_rows) == 0 and len(links) == 0:
+            raise HTTPException(status_code=404)
+        # ....
+        # req_epoch: str = str(int(time.time()))
+        # # get messages
+        # messages_schema: Optional[MessagesSchema] = await MailController.get_messages(token, tenant, id, top, filter)
+        # messages: Optional[List[MessageSchema]] = None
+        # try:
+        #     messages = messages_schema.value
+        # except Exception as e:
+        #     print(e)
+        # if messages is None or len(messages) == 0:
+        #     raise HTTPException(status_code=204, detail="No messages found")
+        # # get user
+        # user_dict:  Optional[UserResponseSchema] = await UserController.get_user(token, id)
+        # if user_dict is None:
+        #     raise HTTPException(status_code=500)
+        # user: UserResponseSchema = UserResponseSchema(**user_dict)
+        # # save messages
+        # logger.bind().info("Saving messages")
+        # se_correspondence_rows: List[SECorrespondence] = \
+        #     await MailController.process_and_load_to_db_user_messages(tenant, user, messages, db_fit, db_mailstore, req_epoch)
+        # # save attachments
+        # logger.bind().info("Saving messages attachments")
+        # links = []
+        # for message in messages:
+        #     if message.hasAttachments:
+        #         logger.bind(message_unique_id=message.internetMessageId).debug("Has attachment(s)")
+        #         message_links = await MailController.save_message_attachments(db_mailstore, token, id, message.id, message.internetMessageId)
+        #         links.append(",".join(message_links))
+        # return se_correspondence_rows, links
     else:
         logger.bind(
             error=token.get("error"),

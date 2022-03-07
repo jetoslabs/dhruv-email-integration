@@ -4,7 +4,7 @@ from loguru import logger
 
 from app.apiclients.api_client import ApiClient
 from app.apiclients.endpoint_ms import MsEndpointsHelper, endpoints_ms, MsEndpointHelper
-from app.schemas.schema_ms_graph import UsersSchema, UserSchema
+from app.schemas.schema_ms_graph import UsersSchema, UserSchema, UserResponseSchema
 
 
 class UserController:
@@ -22,6 +22,16 @@ class UserController:
         if data is None: return None
         users = UsersSchema(**data)
         return users
+
+    @staticmethod
+    async def get_user(token: Any, user_id: str) -> Optional[UserResponseSchema]:
+        # ms graph api - https://docs.microsoft.com/en-us/graph/api/user-get?view=graph-rest-1.0&tabs=http
+        endpoint = MsEndpointsHelper.get_endpoint("user:get", endpoints_ms)
+        # update the endpoint request_params
+        endpoint.request_params["user_id"] = user_id
+        url = MsEndpointHelper.form_url(endpoint)
+        response, data = await ApiClient('get', url, headers=ApiClient.get_headers(token)).retryable_call()
+        return UserResponseSchema(**data) if type(data) == 'dict' else None
 
     @staticmethod
     async def get_user_by_email(token: Any, user_email: str, select: str) -> Optional[UserSchema]:

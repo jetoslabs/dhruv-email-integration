@@ -2,8 +2,6 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
-from app.apiclients.api_client import ApiClient
-from app.apiclients.endpoint_ms import endpoints_ms, MsEndpointsHelper, MsEndpointHelper
 from app.controllers.common import raise_http_exception
 from app.controllers.user import UserController
 from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
@@ -26,17 +24,10 @@ async def get_users(tenant: str, top: int = 5, select: str = "", filter: str = "
 async def get_user(tenant: str, user_id: str) -> UserResponseSchema:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
-        # ms graph api - https://docs.microsoft.com/en-us/graph/api/user-get?view=graph-rest-1.0&tabs=http
-        endpoint = MsEndpointsHelper.get_endpoint("user:get", endpoints_ms)
-        # update the endpoint request_params
-        endpoint.request_params["user_id"] = user_id
-        url = MsEndpointHelper.form_url(endpoint)
-        response, data = await ApiClient('get', url, headers=ApiClient.get_headers(token)).retryable_call()
-        return UserResponseSchema(**data) if type(data) == 'dict' else data
+        user_schema = await UserController.get_user(token, user_id)
+        return user_schema
     else:
-        print(token.get("error"))
-        print(token.get("error_description"))
-        print(token.get("correlation_id"))  # You may need this when reporting a bug
+        raise_http_exception(token, 401, "Unauthorized")
 
 
 @router.get("/users/emails/{user_email}", response_model=UserSchema)

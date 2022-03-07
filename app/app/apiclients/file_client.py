@@ -18,7 +18,7 @@ class FileHelper:
                 file.write(file_obj.read())
 
             if await FileHelper.check_in_disk(base_path, relative_path, filename):
-                logger.bind(full_path=full_path).debug("Saved to disk")
+                logger.bind(full_path=full_path).info("Saved to disk")
                 return full_path
 
         except Exception as e:

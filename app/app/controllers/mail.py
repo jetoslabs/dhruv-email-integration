@@ -74,19 +74,22 @@ class MailController:
         url = MsEndpointHelper.form_url(endpoint)
         api_client = ApiClient(endpoint.request_method, url, headers=ApiClient.get_headers(token), timeout_sec=30)
         response, data = await api_client.retryable_call()
-        return AttachmentsSchema(**data)
+        try:
+            return AttachmentsSchema(**data)
+        except Exception as e:
+            logger.bind().error(e)
 
     @staticmethod
-    async def save_message_attachments(db_mailstore, message_id: str, attachments: List[AttachmentSchema]) -> Optional[List[str]]:
+    async def save_message_attachments(db_mailstore, internet_message_id: str, attachments: List[AttachmentSchema]) -> Optional[List[str]]:
         correspondence: Optional[SECorrespondence] = \
-            CRUDSECorrespondence(SECorrespondence).get_by_mail_unique_id(db_mailstore, mail_unique_id=message_id)
+            CRUDSECorrespondence(SECorrespondence).get_by_mail_unique_id(db_mailstore, mail_unique_id=internet_message_id)
         if correspondence is None:
-            logger.bind(message_id=message_id).error("Mail Not found ")
+            logger.bind(internet_message_id=internet_message_id).error("Mail Not found ")
             return None  # no row in db
         links = []
         for attachment in attachments:
             if attachment.contentBytes is None:
-                logger.bind(message_id=message_id, attachment=attachment.name).error("Message attachment has no content")
+                logger.bind(internet_message_id=internet_message_id, attachment=attachment.name).error("Message attachment has no content")
                 continue
             content_b64 = attachment.contentBytes
             # contentBytes is base64 encoded str
@@ -162,7 +165,7 @@ class MailProcessor:
     ) -> Optional[SECorrespondenceCreate]:
         obj_in: Optional[SECorrespondenceCreate] = None
         if not MailProcessor.is_internal_address(tenant, email_address):
-            logger.bind(email=email_address, message=message.id).debug("process_or_discard_message")
+            # logger.bind(email=email_address, message=message.id).debug("process_or_discard_message")
             email_link_info: EmailTrackerGetEmailLinkInfo = await MailProcessor.get_email_link_from_dhruv(
                 email_address, message.sentDateTime, message.conversationId[:44], db_fit
             )

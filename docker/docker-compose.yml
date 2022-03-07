@@ -11,18 +11,18 @@ x-env: &env
   APP_WORKERS: 1
   API_V1_STR: "v1"
   # Configuration
-  CONFIGURATION_PATH: "../"
+  CONFIGURATION_PATH: "./"
 
 services:
 
-  msgraph-manager:
-    container_name: msgrapgh-manager
+  dhruv-email-integration:
+    container_name: dhruv-email-integration
     build: ../app
     command: uvicorn app.main:app --reload --workers 2 --host 0.0.0.0 --port 80
     restart: always
     # volumes being used only for hot reload, comment for prod
-    volumes:
-      - ../app:/usr/src/o365-manager/app
+#    volumes:
+#      - ../../attachments:../../attachments
     ports:
       - "80:80"
     environment:

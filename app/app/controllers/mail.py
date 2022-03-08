@@ -2,10 +2,12 @@ import base64
 import time
 from datetime import datetime
 from io import BytesIO
-from typing import Any, Optional, List
+from typing import Any, Optional, List, Tuple
 
+from aiohttp import ClientResponse
 from loguru import logger
 from sqlalchemy.orm import Session
+from fastapi.responses import JSONResponse
 
 from app.apiclients.api_client import ApiClient
 from app.apiclients.endpoint_ms import MsEndpointHelper, MsEndpointsHelper, endpoints_ms
@@ -16,10 +18,11 @@ from app.core.config import global_config
 from app.crud.crud_se_correspondence import CRUDSECorrespondence
 from app.crud.stored_procedures import StoredProcedures
 from app.models.se_correspondence import SECorrespondence
-from app.schemas.schema_db import SECorrespondenceCreate
+from app.schemas.schema_db import SECorrespondenceCreate, SECorrespondenceUpdate
 from app.schemas.schema_ms_graph import MessageResponseSchema, MessageSchema, MessagesSchema, AttachmentsSchema, \
-    AttachmentSchema, UserResponseSchema, SendMessageRequestSchema
-from app.schemas.schema_sp import EmailTrackerGetEmailLinkInfo, EmailTrackerGetEmailLinkInfoParams
+    AttachmentSchema, UserResponseSchema, SendMessageRequestSchema, UserSchema
+from app.schemas.schema_sp import EmailTrackerGetEmailLinkInfo, EmailTrackerGetEmailLinkInfoParams, \
+    EmailTrackerGetEmailIDSchema
 
 
 class MailController:
@@ -52,7 +55,7 @@ class MailController:
     #     pass
 
     @staticmethod
-    async def process_and_load_to_db_user_messages(
+    async def process_and_load_user_messages_to_db(
             tenant: str,
             user: UserResponseSchema,
             messages: List[MessageSchema],
@@ -97,7 +100,7 @@ class MailController:
         # save messages
         logger.bind().info("Saving messages")
         se_correspondence_rows: List[SECorrespondence] = \
-            await MailController.process_and_load_to_db_user_messages(tenant, user, messages, db_fit, db_mailstore, req_epoch)
+            await MailController.process_and_load_user_messages_to_db(tenant, user, messages, db_fit, db_mailstore, req_epoch)
         # save attachments
         logger.bind().info("Saving messages attachments")
         links = []
@@ -163,6 +166,142 @@ class MailController:
             links.append(saved_to)
         return links
 
+    @staticmethod
+    async def save_message(
+            token: Any,
+            tenant: str,
+            id: str,
+            message_id: str,
+            db_fit: Session,
+            db_mailstore: Session
+    ):
+        req_epoch: str = str(int(time.time()))
+        # get messages
+        message_response_schema: Optional[MessageResponseSchema] = await MailController.get_message(token, id, message_id)
+        if message_response_schema is None:
+            logger.bind().error("Could not find message")
+            return None
+            # raise HTTPException(status_code=404, detail="No messages found")
+        message = MessageSchema(**(message_response_schema.dict()))
+        # get user
+        user_dict:  Optional[UserResponseSchema] = await UserController.get_user(token, id)  # TODO: Write UserController.get_user
+        if user_dict is None:
+            logger.bind().error("Could not find user")
+            return None
+            # raise HTTPException(status_code=500)
+        user: UserResponseSchema = UserResponseSchema(**user_dict)
+        # save messages
+        se_correspondence_rows: List[SECorrespondence] = \
+            await MailController.process_and_load_user_messages_to_db(tenant, user, [message], db_fit, db_mailstore, req_epoch)
+        # save attachments
+        links = []
+        # message_links = await save_message_attachments(tenant, id, message.id, message.internetMessageId, db=db_mailstore)
+        message_links = await MailController.save_message_attachments(db_mailstore, token, id, message.id, message.internetMessageId)
+        links.append(",".join(message_links))
+        return se_correspondence_rows, links
+
+    @staticmethod
+    async def save_tenant_messages(
+            token: Any,
+            tenant: str,
+            db_sales97: Session,
+            db_fit: Session,
+            db_mailstore: Session,
+            top: int = 5,
+            filter: str = ""
+    ) -> (List[UserSchema], List[SECorrespondence], List[str]):
+        # get list of trackable users
+        users_to_track: List[EmailTrackerGetEmailIDSchema] = await StoredProcedures.dhruv_EmailTrackerGetEmailID(db_sales97)
+        # get user ids for those email ids
+        users: List[UserSchema] = []
+        for user_to_track in users_to_track:
+            user = await UserController.get_user_by_email(token, user_to_track.EMailId, "")
+            if user is None:
+                logger.bind(user_to_track=user_to_track).error("Cannot find in Azure")
+            else:
+                logger.bind(user_to_track=user_to_track).debug("Found in Azure")
+                users.append(user)
+        # call save_user_messages for each user id
+        all_rows = []
+        all_links = []
+        for user in users:
+            try:
+                rows, links = \
+                    await MailController.save_user_messages(token, tenant, user.id, db_fit, db_mailstore, top, filter)
+                # rows, links = await save_user_messages(tenant, user.id, top, filter, db_fit, db_mailstore)
+                logger.bind(tenant=tenant, user=user, rows=len(rows), links=len(links)).info("Saved user messages")
+                if len(rows) > 0: all_rows.append(rows)
+                if len(links) > 0: all_links.append(",".join(links))
+            except Exception as e:
+                logger.bind(
+                    error=token.get("error"),
+                    error_description=token.get("error_description"),
+                    correlation_id=token.get("correlation_id")
+                ).error(f"investigate:\n {e}")
+                continue
+        return users, all_rows, all_links
+
+    @staticmethod
+    async def update_tenant_messages(
+            token: Any, tenant: str, db_mailstore: Session, skip: int = 0, limit: int = 100
+    ) -> List[SECorrespondenceUpdate]:
+        # get some rows that have empty CorrespondenceId44
+        se_correspondence_rows: List[SECorrespondence] = \
+            CRUDSECorrespondence(SECorrespondence).get_where_conversation_id_44_is_empty(db_mailstore, skip=skip, limit=limit)
+        # fetch CorrespondenceId for internetMessageId(MailUniqueId)
+        se_correspondence_updates: List[SECorrespondenceUpdate] = []
+        for se_correspondence_row in se_correspondence_rows:
+            emails = []
+            if se_correspondence_row.MailFrom: emails.append(se_correspondence_row.MailFrom)
+            if se_correspondence_row.MailTo: [emails.append(email) for email in se_correspondence_row.MailTo.split(',')]
+            if se_correspondence_row.MailCC: [emails.append(email) for email in se_correspondence_row.MailCC.split(',')]
+            if se_correspondence_row.MailBCC: [emails.append(email) for email in se_correspondence_row.MailBCC.split(',')]
+            user: Optional[UserSchema]
+            for email in emails:
+                # get user from email
+                user = await UserController.get_user_by_email(token, email, "")
+                if user is None or user.id == "":
+                    continue
+                # get message for a user and a given message_id
+                get_messages_filter = f"internetMessageId eq '{se_correspondence_row.MailUniqueId}'"
+                messages_schema: MessagesSchema = await MailController.get_messages(token, tenant, user.id, 5, get_messages_filter)
+                if len(messages_schema.value) == 0:
+                    continue
+                message = messages_schema.value[0]
+                # create obj for se_correspondence update
+                se_correspondence_update = SECorrespondenceUpdate(
+                    SeqNo=se_correspondence_row.SeqNo,
+                    ConversationId=message.conversationId,
+                    ConversationId44=message.conversationId[:44]
+                )
+                se_correspondence_updates.append(se_correspondence_update)
+                # update SECorrespondence # TODO: move out of loop to process whole list instead of 1 by 1
+                update = CRUDSECorrespondence(SECorrespondence).update_conversation_id(
+                    db_mailstore,
+                    se_correspondence_update=se_correspondence_update
+                )
+                se_correspondence_updates.append(update)
+                break
+            # return users_schema
+        return se_correspondence_updates
+
+    @staticmethod
+    async def send_mail(token: Any, user_id: str, message: SendMessageRequestSchema):
+        message: SendMessageRequestSchema = \
+            map_inplace_SendMessageRequestSchema_to_msgrapgh_SendMessageRequestSchema(message)
+        endpoint = MsEndpointsHelper.get_endpoint("message:send", endpoints_ms)
+        endpoint.request_params["id"] = user_id
+        url = MsEndpointHelper.form_url(endpoint)
+        api_client = ApiClient(
+            endpoint.request_method,
+            url,
+            headers=ApiClient.get_headers(token),
+            data=message.json(),
+            timeout_sec=3000)
+        api_client.headers['content-type'] = "application/json"
+        response_and_data: Tuple[ClientResponse, str] = await api_client.retryable_call()
+        response, data = response_and_data
+        return JSONResponse(status_code=response.status, content={"message": data})
 
 class MailProcessor:
 

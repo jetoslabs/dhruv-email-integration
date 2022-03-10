@@ -109,8 +109,8 @@ async def save_message_attachments(tenant: str, id: str, message_id: str, intern
         raise HTTPException(status_code=401)
 
 
-@router.get("/users/{id}/messages/{message_id}/save")
-async def save_message(
+@router.get("/users/{id}/messages/{message_id}/saveMessageAndAttachments")
+async def save_message_and_attachments(
         tenant: str,
         id: str,
         message_id: str,
@@ -119,7 +119,7 @@ async def save_message(
 ):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
-        se_correspondence_rows, links = await MailController.save_message(token, tenant, id, message_id, db_fit, db_mailstore)
+        se_correspondence_rows, links = await MailController.save_message_and_attachments(token, tenant, id, message_id, db_fit, db_mailstore)
         return se_correspondence_rows, links
         # .....
         # req_epoch: str = str(int(time.time()))
@@ -151,8 +151,8 @@ async def save_message(
         raise HTTPException(status_code=401)
 
 
-@router.get("/users/{id}/messages1/save")
-async def save_user_messages(
+@router.get("/users/{id}/messagesAndAttachments/save")
+async def save_user_messages_and_attachments(
         tenant: str,
         id: str,
         top: int = 5,
@@ -163,7 +163,7 @@ async def save_user_messages(
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         se_correspondence_rows, links = \
-            await MailController.save_user_messages(token, tenant, id, db_fit, db_mailstore, top, filter)
+            await MailController.save_user_messages_and_attachments(token, tenant, id, db_fit, db_mailstore, top, filter)
         if len(se_correspondence_rows) == 0 and len(links) == 0:
             raise HTTPException(status_code=404)
         # ....
@@ -204,8 +204,8 @@ async def save_user_messages(
         raise HTTPException(status_code=401)
 
 
-@router.get("/messages1/save")
-async def save_tenant_messages(
+@router.get("/messagesAndAttachments/save")
+async def save_tenant_messages_and_attachments(
         tenant: str,
         top: int = 5,
         filter="",
@@ -216,7 +216,7 @@ async def save_tenant_messages(
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         users, all_rows, all_links = \
-            await MailController.save_tenant_messages(token, tenant, db_sales97, db_fit, db_mailstore, top, filter)
+            await MailController.save_tenant_messages_and_attachments(token, tenant, db_sales97, db_fit, db_mailstore, top, filter)
         return users, all_rows, all_links
         # # get list of trackable users
         # users_to_track: List[EmailTrackerGetEmailIDSchema] = await StoredProcedures.dhruv_EmailTrackerGetEmailID(db_sales97)

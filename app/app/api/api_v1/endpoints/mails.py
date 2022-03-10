@@ -30,7 +30,7 @@ router = APIRouter()
 async def get_messages(tenant: str, id: str, top: int = 5, filter: str = "") -> MessagesSchema:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
-        messages: Optional[MessagesSchema] = await MailController.get_messages(token, tenant, id, top, filter)
+        messages: Optional[MessagesSchema] = await MailController.get_messages_while_nextlink(token, tenant, id, top, filter)
         if messages is None:
             raise HTTPException(status_code=404)
         return messages
@@ -263,7 +263,6 @@ async def update_tenant_messages(
         skip: int = 0,
         limit: int = 100,
         db_mailstore: Session = Depends(deps.get_mailstore_db)
-
 ) -> List[SECorrespondenceUpdate]:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:

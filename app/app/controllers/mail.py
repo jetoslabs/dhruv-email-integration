@@ -38,7 +38,23 @@ class MailController:
         url = MsEndpointHelper.form_url(endpoint)
         api_client = ApiClient(endpoint.request_method, url, headers=ApiClient.get_headers(token), timeout_sec=30)
         response, data = await api_client.retryable_call()
-        return MessagesSchema(**data)
+        try:
+            return MessagesSchema(**data)
+        except Exception as e:
+            logger.bind(data=data).error("Error in converting dict to MessagesSchema")
+
+    @staticmethod
+    async def get_messages_while_nextlink(token: Any, tenant: str, user_id: str, top: int, filter: str) -> List[MessageSchema]:
+        # messages: List[MessageSchema] = []
+        messages_schema: Optional[MessagesSchema] = await MailController.get_messages(token, tenant, user_id, top, filter)
+        messages = messages_schema.value
+        while messages_schema.odata_nextLink:
+            api_client = ApiClient('get', messages_schema.odata_nextLink, headers=ApiClient.get_headers(token), timeout_sec=30)
+            response, data = await api_client.retryable_call()
+            messages_schema = MessagesSchema(**data)
+            messages.extend(messages_schema.value)
+
+        return messages
 
     @staticmethod
     async def get_message(token: Any, user_id: str, message_id: str) -> Optional[MessageResponseSchema]:
@@ -82,21 +98,26 @@ class MailController:
     ) -> (List[SECorrespondence], List[str]):
         req_epoch: str = str(int(time.time()))
         # get messages
-        messages_schema: Optional[MessagesSchema] = await MailController.get_messages(token, tenant, id, top, filter)
-        messages: Optional[List[MessageSchema]] = None
-        try:
-            messages = messages_schema.value
-        except Exception as e:
-            print(e)
+        # messages_schema: Optional[MessagesSchema] = await MailController.get_messages(token, tenant, id, top, filter)
+        # messages: Optional[List[MessageSchema]] = None
+        # try:
+        #     messages = messages_schema.value
+        # except Exception as e:
+        #     print(e)
+        messages: List[MessageSchema] = await MailController.get_messages_while_nextlink(token, tenant, id, top, filter)
         if messages is None or len(messages) == 0:
             logger.bind().error("no messages")
             return None
         # get user
-        user_dict:  Optional[UserResponseSchema] = await UserController.get_user(token, id)
-        if user_dict is None:
+        # user_dict:  Optional[UserResponseSchema] = await UserController.get_user(token, id)
+        # if user_dict is None:
+        #     logger.bind().error("no user")
+        #     return None
+        # user: UserResponseSchema = UserResponseSchema(**user_dict)
+        user: Optional[UserResponseSchema] = await UserController.get_user(token, id)
+        if user is None:
             logger.bind().error("no user")
             return None
-        user: UserResponseSchema = UserResponseSchema(**user_dict)
         # save messages
         logger.bind().info("Saving messages")
         se_correspondence_rows: List[SECorrespondence] = \
@@ -147,7 +168,7 @@ class MailController:
         correspondence: Optional[SECorrespondence] = \
             CRUDSECorrespondence(SECorrespondence).get_by_mail_unique_id(db_mailstore, mail_unique_id=internet_message_id)
         if correspondence is None:
-            logger.bind(internet_message_id=internet_message_id).error("Mail Not found ")
+            logger.bind(internet_message_id=internet_message_id).error("Mail Not found in db")
             return None  # no row in db
         links = []
         for attachment in attachments:
@@ -211,16 +232,17 @@ class MailController:
             filter: str = ""
     ) -> (List[UserSchema], List[SECorrespondence], List[str]):
         # get list of trackable users
-        users_to_track: List[EmailTrackerGetEmailIDSchema] = await StoredProcedures.dhruv_EmailTrackerGetEmailID(db_sales97)
-        # get user ids for those email ids
-        users: List[UserSchema] = []
-        for user_to_track in users_to_track:
-            user = await UserController.get_user_by_email(token, user_to_track.EMailId, "")
-            if user is None:
-                logger.bind(user_to_track=user_to_track).error("Cannot find in Azure")
-            else:
-                logger.bind(user_to_track=user_to_track).debug("Found in Azure")
-                users.append(user)
+        # users_to_track: List[EmailTrackerGetEmailIDSchema] = await StoredProcedures.dhruv_EmailTrackerGetEmailID(db_sales97)
+        # # get user ids for those email ids
+        # users: List[UserSchema] = []
+        # for user_to_track in users_to_track:
+        #     user = await UserController.get_user_by_email(token, user_to_track.EMailId, "")
+        #     if user is None:
+        #         logger.bind(user_to_track=user_to_track).error("Cannot find in Azure")
+        #     else:
+        #         logger.bind(user_to_track=user_to_track).debug("Found in Azure")
+        #         users.append(user)
+        users: List[UserSchema] = await UserController.get_users_to_track(token, db_sales97)
         # call save_user_messages for each user id
         all_rows = []
         all_links = []
@@ -265,6 +287,11 @@ class MailController:
                 # get message for a user and a given message_id
                 get_messages_filter = f"internetMessageId eq '{se_correspondence_row.MailUniqueId}'"
                 messages_schema: MessagesSchema = await MailController.get_messages(token, tenant, user.id, 5, get_messages_filter)
+                if messages_schema is None:
+                    logger.bind(
+                        tenant=tenant, user_email=email, mail_subject=se_correspondence_row.MailSubject
+                    ).error("messages_schema is None, skipping this record")
+                    continue
                 if len(messages_schema.value) == 0:
                     continue
                 message = messages_schema.value[0]

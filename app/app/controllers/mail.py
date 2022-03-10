@@ -120,19 +120,22 @@ class MailController:
             return None
         # save messages
         logger.bind().info("Saving messages")
-        se_correspondence_rows: List[SECorrespondence] = \
-            await MailController.process_and_load_user_messages_to_db(tenant, user, messages, db_fit, db_mailstore, req_epoch)
+        se_correspondence_rows: List[SECorrespondence] = await MailController.process_and_load_user_messages_to_db(
+            tenant, user, messages, db_fit, db_mailstore, req_epoch
+        )
         # save attachments
-        logger.bind().info("Saving messages attachments")
-        links = []
-        for message in messages:
-            if message.hasAttachments:
-                logger.bind(message_unique_id=message.internetMessageId).debug("Has attachment(s)")
-                message_links = await MailController.save_message_attachments(db_mailstore, token, id, message.id, message.internetMessageId)
-                if message_links is None:
-                    logger.bind().debug("No attachment saved")
-                    continue
-                links.append(",".join(message_links))
+        links: List[str] = await MailController.process_and_save_user_messages_attachments_to_disk()
+        # ...
+        # logger.bind().info("Saving messages attachments")
+        # links = []
+        # for message in messages:
+        #     if message.hasAttachments:
+        #         logger.bind(message_unique_id=message.internetMessageId).debug("Has attachment(s)")
+        #         message_links = await MailController.save_message_attachments(db_mailstore, token, id, message.id, message.internetMessageId)
+        #         if message_links is None:
+        #             logger.bind().debug("No attachment saved")
+        #             continue
+        #         links.append(",".join(message_links))
         return se_correspondence_rows, links
 
     @staticmethod
@@ -156,23 +159,28 @@ class MailController:
         if attachments_schema is None or attachments_schema.value is None:
             return None
         attachments = attachments_schema.value
-        logger.bind(
-            message_id=message_id, attachments="".join([attachment.name for attachment in attachments])
-        ).info("Saving message attachments to disk")
-        links: Optional[List[str]] = await MailController.save_message_attachments_to_disk(
+        links: Optional[List[str]] = await MailController.save_attachments_to_disk_if_message_in_db(
             db_mailstore,
             internet_message_id,
             attachments
         )
+        logger.bind(
+            mail_unique_id=internet_message_id, attachments="".join([attachment.name for attachment in attachments])
+        ).info("Saved message attachments to disk")
         return links
 
     @staticmethod
-    async def save_message_attachments_to_disk(db_mailstore: Session, internet_message_id: str, attachments: List[AttachmentSchema]) -> Optional[List[str]]:
-        correspondence: Optional[SECorrespondence] = \
-            CRUDSECorrespondence(SECorrespondence).get_by_mail_unique_id(db_mailstore, mail_unique_id=internet_message_id)
+    async def save_attachments_to_disk_if_message_in_db(db_mailstore: Session, internet_message_id: str, attachments: List[AttachmentSchema]) -> Optional[List[str]]:
+        correspondence: Optional[SECorrespondence] = await MailController.get_mail_from_db(internet_message_id, db_mailstore)
         if correspondence is None:
-            logger.bind(internet_message_id=internet_message_id).error("Mail Not found in db")
-            return None  # no row in db
+            return None
+        # .....
+        # correspondence: Optional[SECorrespondence] = \
+        #     CRUDSECorrespondence(SECorrespondence).get_by_mail_unique_id(db_mailstore, mail_unique_id=internet_message_id)
+        # if correspondence is None:
+        #     logger.bind(internet_message_id=internet_message_id).error("Mail Not found in db")
+        #     return None  # no row in db
+        # ....
         links = []
         for attachment in attachments:
             if attachment.contentBytes is None:
@@ -189,6 +197,31 @@ class MailController:
             logger.bind(saved_to=saved_to).info("Saved to disk")
             links.append(saved_to)
         return links
+
+    @staticmethod
+    async def process_and_save_user_messages_attachments_to_disk(token:Any, id: str, messages: List[MessageSchema], db_mailstore: Session) -> List[str]:
+        links: List[str] = []
+        for message in messages:
+            if not message.hasAttachments:
+                logger.bind(message_unique_id=message.internetMessageId).debug("Mail has no attachment(s)")
+                continue
+            if MailController.get_mail_from_db(message.internetMessageId, db_mailstore) is None:
+                logger.bind(internet_message_id=message.internetMessageId).debug("Mail Not found in db")
+                continue
+            message_links = await MailController.save_message_attachments(db_mailstore, token, id, message.id, message.internetMessageId)
+            if message_links is None:
+                logger.bind().debug("No attachment saved")
+                continue
+            links.append(",".join(message_links))
+            return links
+
+    @staticmethod
+    async def get_mail_from_db(internet_message_id: str, db_mailstore: Session) -> Optional[SECorrespondence]:
+        correspondence: Optional[SECorrespondence] = \
+            CRUDSECorrespondence(SECorrespondence).get_by_mail_unique_id(db_mailstore, mail_unique_id=internet_message_id)
+        if correspondence is None:
+            return None  # no row in db
+        return correspondence
 
     @staticmethod
     async def save_message(

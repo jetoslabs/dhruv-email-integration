@@ -212,7 +212,7 @@ async def save_tenant_messages_and_attachments(
         db_sales97: Session = Depends(deps.get_sales97_db),
         db_fit: Session = Depends(deps.get_fit_db),
         db_mailstore: Session = Depends(deps.get_mailstore_db)
-) -> (List[UserSchema], List[SECorrespondence], List[str]): # TODO: start here !!!! refactor to controller
+) -> (List[UserSchema], List[SECorrespondence], List[str]):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         users, all_rows, all_links = \

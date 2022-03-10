@@ -207,7 +207,7 @@ class MailController:
             if not message.hasAttachments:
                 logger.bind(message_unique_id=message.internetMessageId).debug("Mail has no attachment(s)")
                 continue
-            if MailController.get_mail_from_db(message.internetMessageId, db_mailstore) is None:
+            if await MailController.get_mail_from_db(message.internetMessageId, db_mailstore) is None:
                 logger.bind(internet_message_id=message.internetMessageId).debug("Mail Not found in db")
                 continue
             message_links = await MailController.save_message_attachments(db_mailstore, token, id, message.id, message.internetMessageId)

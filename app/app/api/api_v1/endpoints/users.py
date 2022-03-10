@@ -1,7 +1,9 @@
-from typing import Optional
+from typing import Optional, List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
 
+from app.api import deps
 from app.controllers.common import raise_http_exception
 from app.controllers.user import UserController
 from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
@@ -38,5 +40,17 @@ async def get_user_by_email(tenant: str, user_email: str) -> Optional[UserSchema
         if user is None:
             raise HTTPException(status_code=404)
         return user
+    else:
+        raise_http_exception(token, 401, "Unauthorized")
+
+
+@router.get("/usersToTrack", response_model=List[UserSchema])
+async def get_users_to_track(tenant: str, db_sales97: Session = Depends(deps.get_sales97_db)) -> List[UserSchema]:
+    config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
+    if "access_token" in token:
+        users: List[UserSchema] = await UserController.get_users_to_track(token, db_sales97)
+        if users is None:
+            raise HTTPException(status_code=404)
+        return users
     else:
         raise_http_exception(token, 401, "Unauthorized")

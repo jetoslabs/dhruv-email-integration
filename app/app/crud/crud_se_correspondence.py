@@ -37,6 +37,7 @@ class CRUDSECorrespondence(CRUDBase[SECorrespondence, SECorrespondenceCreate, SE
                            self.model.ConversationId,
                            self.model.ConversationId44)\
             .where(self.model.MailUniqueId != "")\
+            .where(self.model.MailUniqueId.startswith('<'))\
             .filter(self.model.ConversationId44 == None)\
             .order_by(self.model.SeqNo.desc())\
             .offset(skip)\

@@ -124,7 +124,9 @@ class MailController:
             tenant, user, messages, db_fit, db_mailstore, req_epoch
         )
         # save attachments
-        links: List[str] = await MailController.process_and_save_user_messages_attachments_to_disk()
+        links: List[str] = await MailController.process_and_save_user_messages_attachments_to_disk(
+            token, id, messages, db_mailstore
+        )
         # ...
         # logger.bind().info("Saving messages attachments")
         # links = []

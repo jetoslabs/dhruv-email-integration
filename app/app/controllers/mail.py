@@ -129,6 +129,9 @@ class MailController:
             if message.hasAttachments:
                 logger.bind(message_unique_id=message.internetMessageId).debug("Has attachment(s)")
                 message_links = await MailController.save_message_attachments(db_mailstore, token, id, message.id, message.internetMessageId)
+                if message_links is None:
+                    logger.bind().debug("No attachment saved")
+                    continue
                 links.append(",".join(message_links))
         return se_correspondence_rows, links
 

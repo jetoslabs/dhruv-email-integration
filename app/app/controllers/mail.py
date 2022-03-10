@@ -87,7 +87,7 @@ class MailController:
         return se_correspondence_rows
 
     @staticmethod
-    async def save_user_messages(
+    async def save_user_messages_and_attachments(
             token: any,
             tenant: str,
             id: str,
@@ -226,7 +226,7 @@ class MailController:
         return correspondence
 
     @staticmethod
-    async def save_message(
+    async def save_message_and_attachments(
             token: Any,
             tenant: str,
             id: str,
@@ -260,7 +260,7 @@ class MailController:
         return se_correspondence_rows, links
 
     @staticmethod
-    async def save_tenant_messages(
+    async def save_tenant_messages_and_attachments(
             token: Any,
             tenant: str,
             db_sales97: Session,
@@ -287,7 +287,7 @@ class MailController:
         for user in users:
             try:
                 rows, links = \
-                    await MailController.save_user_messages(token, tenant, user.id, db_fit, db_mailstore, top, filter)
+                    await MailController.save_user_messages_and_attachments(token, tenant, user.id, db_fit, db_mailstore, top, filter)
                 # rows, links = await save_user_messages(tenant, user.id, top, filter, db_fit, db_mailstore)
                 logger.bind(tenant=tenant, user=user, rows=len(rows), links=len(links)).info("Saved user messages")
                 if len(rows) > 0: all_rows.append(rows)

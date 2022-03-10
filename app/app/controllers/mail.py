@@ -158,7 +158,7 @@ class MailController:
         attachments = attachments_schema.value
         logger.bind(
             message_id=message_id, attachments="".join([attachment.name for attachment in attachments])
-        ).info("Saving message attachments")
+        ).info("Saving message attachments to disk")
         links: Optional[List[str]] = await MailController.save_message_attachments_to_disk(
             db_mailstore,
             internet_message_id,

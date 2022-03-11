@@ -1,9 +1,6 @@
 #  MS Identity Platform
-import atexit
 import json
-import os
 import sys
-from functools import lru_cache
 from typing import Any, Union, Tuple, Dict, Optional
 
 import msal
@@ -50,19 +47,6 @@ ms_auth_configs = load_ms_auth_configs(f"{settings.CONFIGURATION_PATH}configurat
 
 def get_confidential_client_application(config) -> ConfidentialClientApplication:
     # TODO: make ConfidentialClientApplication long-lived (should be 1 for each tenant)
-    # Create a preferably long-lived app instance which maintains a token cache.
-    # cache = msal.SerializableTokenCache()
-    # if os.path.exists("my_cache.bin"):
-    #     cache.deserialize(open("my_cache.bin", "r").read())
-    # else:
-    #     # Creates a new file
-    #     with open("my_cache.bin", 'w') as fp:
-    #         pass
-    # atexit.register(lambda:
-    #                 open("my_cache.bin", "w").write(cache.serialize())
-    #                 # Hint: The following optional line persists only when state changed
-    #                 if cache.has_state_changed else None
-    #                 )
     app: ConfidentialClientApplication = msal.ConfidentialClientApplication(
         config.client_id,
         authority=config.authority,

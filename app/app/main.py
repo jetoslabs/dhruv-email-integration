@@ -6,6 +6,7 @@ from app.core.description import description
 from app.core.log import setup_logger
 from app.core.settings import settings
 from app.api.api_v1 import api
+from app.middlewares import middleware_tracer
 
 
 def create_app():
@@ -19,7 +20,13 @@ def create_app():
             "email": settings.CONTACT_EMAIL,
         }
     )
+
+    # Add Router
     fastapi.include_router(router=api.router, prefix=f"/{settings.API_V1_STR}")
+
+    # Add Middleware routers
+    fastapi.add_middleware(middleware_tracer.TracerMiddleware)
+
     return fastapi
 
 

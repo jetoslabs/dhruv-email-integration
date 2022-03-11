@@ -1,12 +1,10 @@
 import json
 import time
 from io import BytesIO
-from typing import List, Any
 
 from fastapi import APIRouter, Depends
 import msal
 from loguru import logger
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api import deps
@@ -15,9 +13,9 @@ from app.apiclients.aws_client import AWSClientHelper, boto3_session
 from app.apiclients.endpoint_ms import MsEndpointsHelper
 from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
 from app.core.config import GlobalConfigHelper, global_config
-from app.crud.stored_procedures import run_stored_procedure, StoredProcedures
+from app.crud.stored_procedures import StoredProcedures
 from app.initial_data import init
-from app.schemas.schema_sp import EmailTrackerGetEmailIDSchema, EmailTrackerGetEmailLinkInfoParams
+from app.schemas.schema_sp import EmailTrackerGetEmailLinkInfoParams
 
 router = APIRouter()
 
@@ -120,16 +118,3 @@ async def stored_procedure(db: Session = Depends(deps.get_fit_db)):
         )
     )
     return res
-    # logger.info("Staring stored procedure")
-    # # params = {"\@EmailIDInClientAgentSupplier": "fiona.byrd@gmail.com"}
-    # # # EmailIDInClientAgentSupplier = "fiona.byrd@gmail.com"
-    #
-    # res: List[Any] = run_stored_procedure(
-    #     db,
-    #     "fit.dbo.dhruv_EmailTrackerGetEmailLinkInfo",
-    #     ['fiona.byrd@gmail.com', '', '02/22/2022']
-    #     # AnyBaseModelSchema=BaseModel
-    # )
-    # logger.info("Ending stored procedure")
-    # return res
-

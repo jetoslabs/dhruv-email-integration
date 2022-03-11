@@ -1,4 +1,4 @@
-from typing import List, Any, Optional
+from typing import List, Any
 
 from loguru import logger
 from sqlalchemy.orm import Session

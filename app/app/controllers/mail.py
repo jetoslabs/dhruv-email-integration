@@ -21,8 +21,7 @@ from app.models.se_correspondence import SECorrespondence
 from app.schemas.schema_db import SECorrespondenceCreate, SECorrespondenceUpdate
 from app.schemas.schema_ms_graph import MessageResponseSchema, MessageSchema, MessagesSchema, AttachmentsSchema, \
     AttachmentSchema, UserResponseSchema, SendMessageRequestSchema, UserSchema
-from app.schemas.schema_sp import EmailTrackerGetEmailLinkInfo, EmailTrackerGetEmailLinkInfoParams, \
-    EmailTrackerGetEmailIDSchema
+from app.schemas.schema_sp import EmailTrackerGetEmailLinkInfo, EmailTrackerGetEmailLinkInfoParams
 
 
 class MailController:
@@ -97,23 +96,11 @@ class MailController:
             filter: str = "",
     ) -> (List[SECorrespondence], List[str]):
         req_epoch: str = str(int(time.time()))
-        # get messages
-        # messages_schema: Optional[MessagesSchema] = await MailController.get_messages(token, tenant, id, top, filter)
-        # messages: Optional[List[MessageSchema]] = None
-        # try:
-        #     messages = messages_schema.value
-        # except Exception as e:
-        #     print(e)
         messages: List[MessageSchema] = await MailController.get_messages_while_nextlink(token, tenant, id, top, filter)
         if messages is None or len(messages) == 0:
             logger.bind().error("no messages")
             return None
         # get user
-        # user_dict:  Optional[UserResponseSchema] = await UserController.get_user(token, id)
-        # if user_dict is None:
-        #     logger.bind().error("no user")
-        #     return None
-        # user: UserResponseSchema = UserResponseSchema(**user_dict)
         user: Optional[UserResponseSchema] = await UserController.get_user(token, id)
         if user is None:
             logger.bind().error("no user")
@@ -127,17 +114,6 @@ class MailController:
         links: List[str] = await MailController.process_and_save_user_messages_attachments_to_disk(
             token, id, messages, db_mailstore
         )
-        # ...
-        # logger.bind().info("Saving messages attachments")
-        # links = []
-        # for message in messages:
-        #     if message.hasAttachments:
-        #         logger.bind(message_unique_id=message.internetMessageId).debug("Has attachment(s)")
-        #         message_links = await MailController.save_message_attachments(db_mailstore, token, id, message.id, message.internetMessageId)
-        #         if message_links is None:
-        #             logger.bind().debug("No attachment saved")
-        #             continue
-        #         links.append(",".join(message_links))
         return se_correspondence_rows, links
 
     @staticmethod
@@ -176,13 +152,6 @@ class MailController:
         correspondence: Optional[SECorrespondence] = await MailController.get_mail_from_db(internet_message_id, db_mailstore)
         if correspondence is None:
             return None
-        # .....
-        # correspondence: Optional[SECorrespondence] = \
-        #     CRUDSECorrespondence(SECorrespondence).get_by_mail_unique_id(db_mailstore, mail_unique_id=internet_message_id)
-        # if correspondence is None:
-        #     logger.bind(internet_message_id=internet_message_id).error("Mail Not found in db")
-        #     return None  # no row in db
-        # ....
         links = []
         for attachment in attachments:
             if attachment.contentBytes is None:
@@ -240,21 +209,18 @@ class MailController:
         if message_response_schema is None:
             logger.bind().error("Could not find message")
             return None
-            # raise HTTPException(status_code=404, detail="No messages found")
         message = MessageSchema(**(message_response_schema.dict()))
         # get user
         user_dict:  Optional[UserResponseSchema] = await UserController.get_user(token, id)  # TODO: Write UserController.get_user
         if user_dict is None:
             logger.bind().error("Could not find user")
             return None
-            # raise HTTPException(status_code=500)
         user: UserResponseSchema = UserResponseSchema(**user_dict)
         # save messages
         se_correspondence_rows: List[SECorrespondence] = \
             await MailController.process_and_load_user_messages_to_db(tenant, user, [message], db_fit, db_mailstore, req_epoch)
         # save attachments
         links = []
-        # message_links = await save_message_attachments(tenant, id, message.id, message.internetMessageId, db=db_mailstore)
         message_links = await MailController.save_message_attachments(db_mailstore, token, id, message.id, message.internetMessageId)
         links.append(",".join(message_links))
         return se_correspondence_rows, links
@@ -270,16 +236,6 @@ class MailController:
             filter: str = ""
     ) -> (List[UserSchema], List[SECorrespondence], List[str]):
         # get list of trackable users
-        # users_to_track: List[EmailTrackerGetEmailIDSchema] = await StoredProcedures.dhruv_EmailTrackerGetEmailID(db_sales97)
-        # # get user ids for those email ids
-        # users: List[UserSchema] = []
-        # for user_to_track in users_to_track:
-        #     user = await UserController.get_user_by_email(token, user_to_track.EMailId, "")
-        #     if user is None:
-        #         logger.bind(user_to_track=user_to_track).error("Cannot find in Azure")
-        #     else:
-        #         logger.bind(user_to_track=user_to_track).debug("Found in Azure")
-        #         users.append(user)
         users: List[UserSchema] = await UserController.get_users_to_track(token, db_sales97)
         # call save_user_messages for each user id
         all_rows = []
@@ -288,7 +244,6 @@ class MailController:
             try:
                 rows, links = \
                     await MailController.save_user_messages_and_attachments(token, tenant, user.id, db_fit, db_mailstore, top, filter)
-                # rows, links = await save_user_messages(tenant, user.id, top, filter, db_fit, db_mailstore)
                 logger.bind(tenant=tenant, user=user, rows=len(rows), links=len(links)).info("Saved user messages")
                 if len(rows) > 0: all_rows.append(rows)
                 if len(links) > 0: all_links.append(",".join(links))

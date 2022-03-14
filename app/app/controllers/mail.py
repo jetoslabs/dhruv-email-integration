@@ -385,18 +385,21 @@ class MailProcessor:
         if not MailProcessor.is_internal_address(tenant, email_address):
             # logger.bind(email=email_address, message=message.id).debug("process_or_discard_message")
             email_link_info: EmailTrackerGetEmailLinkInfo = await MailProcessor.get_email_link_from_dhruv(
-                email_address, message.sentDateTime, message.conversationId[:44], db_fit
+                email_address, message.sentDateTime, message.conversationId, db_fit
             )
             if len(email_link_info.AccountCode) > 0:
+                logger.bind(
+                    email=email_address, message=message.internetMessageId, subject=message.subject
+                ).info("processed message")
                 obj_in = map_MessageSchema_to_SECorrespondenceCreate(
                     message, email_link_info, process_time
                 )
         return obj_in
 
     @staticmethod
-    async def get_email_link_from_dhruv(email: str, date: str, conversation_id_44: str, db: Session) -> EmailTrackerGetEmailLinkInfo:
+    async def get_email_link_from_dhruv(email: str, date: str, conversation_id: str, db: Session) -> EmailTrackerGetEmailLinkInfo:
         # get email link info from dhruv
-        email_link_info_params = EmailTrackerGetEmailLinkInfoParams(email=email, date=date, conversation_id_44=conversation_id_44)
+        email_link_info_params = EmailTrackerGetEmailLinkInfoParams(email=email, date=date, conversation_id=conversation_id)
         email_links_info = \
             await StoredProcedures.dhruv_EmailTrackerGetEmailLinkInfo(db, email_link_info_params)
         return email_links_info[0]

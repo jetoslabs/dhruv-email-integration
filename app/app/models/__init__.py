@@ -1,2 +1,1 @@
-from .correspondance_id import CorrespondenceId
-from .correspondance import Correspondence
+from .se_correspondence import SECorrespondence

@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     API_V1_STR = "v1"
     # Configuration
     CONFIGURATION_PATH = "../"
+    CONFIGURATION_LOC = "../configuration"
 
 
 settings = Settings()

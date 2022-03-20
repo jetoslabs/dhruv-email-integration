@@ -2,6 +2,7 @@ import uvicorn
 from fastapi import FastAPI
 from loguru import logger
 
+from app.core.config import Config
 from app.core.description import description
 from app.core.log import setup_logger
 from app.core.settings import settings
@@ -38,6 +39,7 @@ async def startup_event():
     # setup logger before everything
     setup_logger()
     logger.bind().info("Startup event")
+    # TODO: configuration = Config.validate_and_load(settings.CONFIGURATION_LOC)
     # TODO: setup ConfidentialClientApplication
     # TODO: setup boto3 (s3) session
     # TODO: init here... ms_auth_configs

@@ -14,7 +14,7 @@ from app.apiclients.endpoint_ms import MsEndpointHelper, MsEndpointsHelper, endp
 from app.apiclients.file_client import FileHelper
 from app.controllers.user import UserController
 from app.core.auth import get_ms_auth_config, MsAuthConfig
-from app.core.config import global_config
+from app.core.config import global_config, configuration, MailIntegrateJobDependency
 from app.crud.crud_se_correspondence import CRUDSECorrespondence
 from app.crud.stored_procedures import StoredProcedures
 from app.models.se_correspondence import SECorrespondence
@@ -489,23 +489,49 @@ class MailProcessor:
         obj_in: Optional[SECorrespondenceCreate] = None
         if not MailProcessor.is_internal_address(tenant, email_address):
             # logger.bind(email=email_address, message=message.id).debug("process_or_discard_message")
-            # check for EmailLinkInfo
+            # get email_link_info
             email_link_info: EmailTrackerGetEmailLinkInfo = await MailProcessor.get_email_link_from_dhruv(
                 email_address, message.sentDateTime, message.conversationId, db_fit
             )
-            # check for email_chain_origin
-            is_mail_chain_origin_in_dhruv = await MailProcessor.is_mail_chain_origin_in_dhruv(
+            # get is_email_chain_origin
+            is_mail_chain_origin_in_dhruv: bool = await MailProcessor.is_mail_chain_origin_in_dhruv(
                 db_mailstore, message.from_email.emailAddress.address, message.subject
             )
-            # check if we can process message
-            if len(email_link_info.AccountCode) > 0 or is_mail_chain_origin_in_dhruv:
-                # process
-                logger.bind(
-                    email=email_address, message=message.internetMessageId, subject=message.subject
-                ).info("processed message")
-                obj_in = map_MessageSchema_to_SECorrespondenceCreate(
-                    message, email_link_info, process_time
-                )
+
+            obj_in: Optional[SECorrespondenceCreate] = None
+            dependencies = configuration.tenant_configurations.get(tenant).mail_integrate_job.dependencies
+            is_check_DhruvOrigin: bool = MailIntegrateJobDependency.DhruvOrigin in dependencies
+            is_check_EmailLink: bool = MailIntegrateJobDependency.EmailLink in dependencies
+            if is_check_EmailLink and is_check_DhruvOrigin:
+                # check if we can process message
+                if len(email_link_info.AccountCode) > 0 or is_mail_chain_origin_in_dhruv:
+                    # process
+                    logger.bind(
+                        dependencies=dependencies, email=email_address,
+                        message=message.internetMessageId, subject=message.subject).info("processed message")
+                    obj_in = map_MessageSchema_to_SECorrespondenceCreate(
+                        message, email_link_info, process_time
+                    )
+            elif is_check_EmailLink and not is_check_DhruvOrigin:
+                # check if we can process message
+                if len(email_link_info.AccountCode) > 0:
+                    # process
+                    logger.bind(
+                        dependencies=dependencies, email=email_address,
+                        message=message.internetMessageId, subject=message.subject).info("processed message")
+                    obj_in = map_MessageSchema_to_SECorrespondenceCreate(
+                        message, email_link_info, process_time
+                    )
+            elif not is_check_EmailLink and is_check_DhruvOrigin:
+                # check if we can process message
+                if is_mail_chain_origin_in_dhruv:
+                    # process
+                    logger.bind(
+                        dependencies=dependencies,email=email_address,
+                        message=message.internetMessageId, subject=message.subject).info("processed message")
+                    obj_in = map_MessageSchema_to_SECorrespondenceCreate(
+                        message, email_link_info, process_time
+                    )
         return obj_in
 
     @staticmethod

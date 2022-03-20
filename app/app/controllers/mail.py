@@ -118,7 +118,7 @@ class MailController:
         :return: List[SECorrespondence]
         """
         processed_messages: List[SECorrespondenceCreate] = await MailProcessor.process_messages(
-            tenant, user, messages, db_fit, process_ind
+            tenant, user, messages, db_fit, db_mailstore, process_ind
         )
         se_correspondence_rows = CRUDSECorrespondence(SECorrespondence)\
             .get_by_mail_unique_id_or_create_get_if_not_exist_multi(db_mailstore, obj_ins=processed_messages)
@@ -423,6 +423,7 @@ class MailProcessor:
             user: UserResponseSchema,
             messages: List[MessageSchema],
             db_fit: Session,
+            db_mailstore: Session,
             process_ind: str
     ) -> List[SECorrespondenceCreate]:
         """
@@ -431,13 +432,14 @@ class MailProcessor:
         :param user: UserResponseSchema
         :param messages: List[MessageSchema]
         :param db_fit: Session
+        :param db_mailstore: Session
         :param process_ind: str
         :return: List[SECorrespondenceCreate]
         """
         se_correspondence_create_schemas: List[SECorrespondenceCreate] = []
         for message in messages:
             obj_in: Optional[SECorrespondenceCreate] = await MailProcessor.process_message(
-                tenant, user, message, db_fit, process_ind
+                tenant, user, message, db_fit, db_mailstore, process_ind
             )
             if obj_in is not None:
                 se_correspondence_create_schemas.append(obj_in)
@@ -449,6 +451,7 @@ class MailProcessor:
             user: UserResponseSchema,
             message: MessageSchema,
             db_fit: Session,
+            db_mailstore: Session,
             process_time: str = str(int(time.time()))
     ) -> Optional[SECorrespondenceCreate]:
         obj_in: Optional[SECorrespondenceCreate] = None
@@ -460,7 +463,7 @@ class MailProcessor:
                 # process message only if it is related to a client
                 if not MailProcessor.is_internal_address(tenant, to_address):
                     obj_in: Optional[SECorrespondenceCreate] = await MailProcessor.process_or_discard_message(
-                        tenant, to_address, message, db_fit, process_time
+                        tenant, to_address, message, db_fit, db_mailstore, process_time
                     )
                     if obj_in is not None:
                         break
@@ -470,7 +473,7 @@ class MailProcessor:
             if not MailProcessor.is_internal_address(tenant, from_address):
                 obj_in: Optional[SECorrespondenceCreate] = \
                     await MailProcessor.process_or_discard_message(
-                        tenant, from_address, message, db_fit, process_time
+                        tenant, from_address, message, db_fit, db_mailstore, process_time
                     )
         return obj_in
 
@@ -480,15 +483,23 @@ class MailProcessor:
             email_address: str,
             message: MessageSchema,
             db_fit: Session,
+            db_mailstore: Session,
             process_time: str = str(int(time.time()))
     ) -> Optional[SECorrespondenceCreate]:
         obj_in: Optional[SECorrespondenceCreate] = None
         if not MailProcessor.is_internal_address(tenant, email_address):
             # logger.bind(email=email_address, message=message.id).debug("process_or_discard_message")
+            # check for EmailLinkInfo
             email_link_info: EmailTrackerGetEmailLinkInfo = await MailProcessor.get_email_link_from_dhruv(
                 email_address, message.sentDateTime, message.conversationId, db_fit
             )
-            if len(email_link_info.AccountCode) > 0:
+            # check for email_chain_origin
+            is_mail_chain_origin_in_dhruv = await MailProcessor.is_mail_chain_origin_in_dhruv(
+                db_mailstore, message.from_email.emailAddress.address, message.subject
+            )
+            # check if we can process message
+            if len(email_link_info.AccountCode) > 0 or is_mail_chain_origin_in_dhruv:
+                # process
                 logger.bind(
                     email=email_address, message=message.internetMessageId, subject=message.subject
                 ).info("processed message")
@@ -516,15 +527,22 @@ class MailProcessor:
             print(f"TODO: investigate, \n{e}")
 
     @staticmethod
-    def is_internal_address(tenant: str, address: str):
+    def is_internal_address(tenant: str, address: str) -> bool:
         tenant_config: MsAuthConfig = get_ms_auth_config(tenant)
         for domain in tenant_config.internal_domains:
             if domain.lower() in address.lower(): return True
         return False
 
     @staticmethod
-    def is_external_address(tenant: str, address: str):
+    def is_external_address(tenant: str, address: str) -> bool:
         return not MailProcessor.is_internal_address(tenant, address)
+
+    @staticmethod
+    async def is_mail_chain_origin_in_dhruv(db: Session, from_address: str, subject: str) -> bool:
+        is_origin_dhruv = CRUDSECorrespondence(SECorrespondence).is_mail_chain_origin_in_dhruv(
+            db, from_address=from_address, subject=subject
+        )
+        return is_origin_dhruv is not None
 
 
 def get_attachments_path_from_id(id: int, *, min_length=6) -> str:

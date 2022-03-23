@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     APP_WORKERS = 1
     API_V1_STR = "v1"
     # Configuration
-    CONFIGURATION_PATH = "../"
+    CONFIGURATION_PATH = ""
     CONFIGURATION_LOC = "../configuration"
 
 

@@ -12,7 +12,7 @@ from app.apiclients.api_client import ApiClient
 from app.apiclients.aws_client import AWSClientHelper, boto3_session
 from app.apiclients.endpoint_ms import MsEndpointsHelper
 from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
-from app.core.config import GlobalConfigHelper, global_config, Config, Configuration
+from app.core.config import GlobalConfigHelper, global_config, Config, Configuration, configuration
 from app.crud.stored_procedures import StoredProcedures
 from app.initial_data import init
 from app.schemas.schema_sp import EmailTrackerGetEmailLinkInfoParams
@@ -33,15 +33,16 @@ async def run(tenant: str):
     return data
 
 
-@router.get("/")
-async def run():
-    config = json.load(open('../configuration/ms_auth_configs.json'))
-    config = config["manaliorg"]
+@router.get("/msgraph/users")
+async def run(tenant: str):
+    # config = json.load(open('../configuration/ms_auth_configs.json'))
+    # config = config["manaliorg"]
+    config = configuration.tenant_configurations.get(tenant).azure_auth
 
     # Create a preferably long-lived app instance which maintains a token cache.
     app = msal.ConfidentialClientApplication(
-        config['client_id'], authority=config['authority'],
-        client_credential=config['secret'],
+        config.client_id, authority=config.authority,
+        client_credential=config.secret,
         # token_cache=...  # Default cache is in memory only.
                            # You can learn how to use SerializableTokenCache from
                            # https://msal-python.rtfd.io/en/latest/#msal.SerializableTokenCache
@@ -53,11 +54,11 @@ async def run():
     # Firstly, looks up a token from cache
     # Since we are looking for token for the current app, NOT for an end user,
     # notice we give account parameter as None.
-    result = app.acquire_token_silent(config['scope'], account=None)
+    result = app.acquire_token_silent(config.scope, account=None)
 
     if not result:
         logger.info("No suitable token exists in cache. Let's get a new one from AAD.")
-        result = app.acquire_token_for_client(scopes=config['scope'])
+        result = app.acquire_token_for_client(scopes=config.scope)
 
     if "access_token" in result:
         # Calling graph using the access token
@@ -65,7 +66,8 @@ async def run():
         #     config['endpoint'],
         #     headers={'Authorization': 'Bearer ' + result['access_token']}, ).json()
         headers = {'Authorization': 'Bearer ' + result['access_token']}
-        response, graph_data = await ApiClient('get', config['endpoint'], headers=headers).retryable_call()
+        endpoint = "https://graph.microsoft.com/v1.0/users"
+        response, graph_data = await ApiClient('get', endpoint, headers=headers).retryable_call()
         print("Graph API call result: ")
         print(json.dumps(graph_data, indent=2))
         return graph_data
@@ -87,7 +89,7 @@ async def load_global_config():
 
 @router.get("/configuration")
 async def get_configuration() -> Configuration:
-    configuration = Config.validate_and_load("../configuration")
+    configuration = Config.validate_and_load("configuration")
     return configuration
 
 
@@ -124,3 +126,38 @@ async def stored_procedure(db: Session = Depends(deps.get_fit_db)):
         )
     )
     return res
+
+
+class FixedContentQueryChecker:
+    def __init__(self, fixed_content: str):
+        self.fixed_content = fixed_content
+
+    def __call__(self, q: str = ""):
+        if q:
+            return self.fixed_content in q
+        return False
+
+
+checker = FixedContentQueryChecker("bar")
+
+
+class FixedContentQueryChecker1:
+    def __init__(self, fixed_content: str):
+        self.fixed_content = fixed_content
+
+    def __call__(self, q: str = ""):
+        if q:
+            return self.fixed_content in q
+        return False
+
+
+checker1 = FixedContentQueryChecker1("foo")
+
+
+@router.get("/query-checker/")
+async def read_query_check(
+        is_tenant: bool = Depends(deps.assert_tenant),
+        fixed_content_included: bool = Depends(checker),
+        fixed_content_included1: bool = Depends(checker1)
+):
+    return {"fixed_content_in_query": fixed_content_included}

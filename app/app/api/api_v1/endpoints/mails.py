@@ -16,7 +16,9 @@ router = APIRouter()
 
 
 @router.get("/users/{id}/messages", response_model=List[MessageSchema])
-async def get_messages(tenant: str, id: str, top: int = 5, filter: str = "") -> MessagesSchema:
+async def get_messages(
+        tenant: str, id: str, top: int = 5, filter: str = "", _=Depends(deps.assert_tenant)
+) -> MessagesSchema:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         messages: List[MessageSchema] = await MailController.get_messages_while_nextlink(token, tenant, id, top, filter)
@@ -33,7 +35,9 @@ async def get_messages(tenant: str, id: str, top: int = 5, filter: str = "") -> 
 
 
 @router.get("/users/{id}/messages/{message_id}", response_model=MessageResponseSchema)
-async def get_message(tenant: str, id: str, message_id: str) -> MessageResponseSchema:
+async def get_message(
+        tenant: str, id: str, message_id: str, _=Depends(deps.assert_tenant)
+) -> MessageResponseSchema:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         message: Optional[MessageResponseSchema] = await MailController.get_message(token, id, message_id)
@@ -50,7 +54,9 @@ async def get_message(tenant: str, id: str, message_id: str) -> MessageResponseS
 
 
 @router.get("/users/{id}/messages/{message_id}/attachments", response_model=AttachmentsSchema)
-async def list_message_attachments(tenant: str, id: str, message_id: str) -> AttachmentsSchema:
+async def list_message_attachments(
+        tenant: str, id: str, message_id: str, _=Depends(deps.assert_tenant)
+) -> AttachmentsSchema:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         attachments: Optional[AttachmentsSchema] = await MailController.get_message_attachments(token, id, message_id)
@@ -65,8 +71,14 @@ async def list_message_attachments(tenant: str, id: str, message_id: str) -> Att
 
 
 @router.get("/users/{id}/messages/{message_id}/attachments/save", response_model=List[str])
-async def save_message_attachments(tenant: str, id: str, message_id: str, internet_message_id: str = "",
-                                   db: Session = Depends(deps.get_mailstore_db)) -> List[str]:
+async def save_message_attachments(
+        tenant: str,
+        id: str,
+        message_id: str,
+        internet_message_id: str = "",
+        _=Depends(deps.assert_tenant),
+        db: Session = Depends(deps.get_tenant_mailstore_db)
+) -> List[str]:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         links = await MailController.save_message_attachments(db, token, id, message_id, internet_message_id)
@@ -89,12 +101,14 @@ async def save_message_and_attachments(
         tenant: str,
         id: str,
         message_id: str,
-        db_fit: Session = Depends(deps.get_fit_db),
-        db_mailstore: Session = Depends(deps.get_mailstore_db),
+        _=Depends(deps.assert_tenant),
+        db_fit: Session = Depends(deps.get_tenant_fit_db),
+        db_mailstore: Session = Depends(deps.get_tenant_mailstore_db),
 ):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
-        se_correspondence_rows, links = await MailController.save_message_and_attachments(token, tenant, id, message_id, db_fit, db_mailstore)
+        se_correspondence_rows, links = await MailController.save_message_and_attachments(token, tenant, id, message_id,
+                                                                                          db_fit, db_mailstore)
         return se_correspondence_rows, links
     else:
         logger.bind(
@@ -111,13 +125,15 @@ async def save_user_messages_and_attachments(
         id: str,
         top: int = 5,
         filter="",
-        db_fit: Session = Depends(deps.get_fit_db),
-        db_mailstore: Session = Depends(deps.get_mailstore_db)
+        _=Depends(deps.assert_tenant),
+        db_fit: Session = Depends(deps.get_tenant_fit_db),
+        db_mailstore: Session = Depends(deps.get_tenant_mailstore_db)
 ) -> (List[SECorrespondence], List[str]):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         se_correspondence_rows, links = \
-            await MailController.save_user_messages_and_attachments(token, tenant, id, db_fit, db_mailstore, top, filter)
+            await MailController.save_user_messages_and_attachments(token, tenant, id, db_fit, db_mailstore, top,
+                                                                    filter)
         if len(se_correspondence_rows) == 0 and len(links) == 0:
             raise HTTPException(status_code=404)
     else:
@@ -134,14 +150,16 @@ async def save_tenant_messages_and_attachments(
         tenant: str,
         top: int = 5,
         filter="",
+        _=Depends(deps.assert_tenant),
         db_sales97: Session = Depends(deps.get_sales97_db),
-        db_fit: Session = Depends(deps.get_fit_db),
-        db_mailstore: Session = Depends(deps.get_mailstore_db)
+        db_fit: Session = Depends(deps.get_tenant_fit_db),
+        db_mailstore: Session = Depends(deps.get_tenant_mailstore_db)
 ) -> (List[UserSchema], List[SECorrespondence], List[str]):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         users, all_rows, all_links = \
-            await MailController.save_tenant_messages_and_attachments(token, tenant, db_sales97, db_fit, db_mailstore, top, filter)
+            await MailController.save_tenant_messages_and_attachments(token, tenant, db_sales97, db_fit, db_mailstore,
+                                                                      top, filter)
         return users, all_rows, all_links
     else:
         logger.bind(
@@ -157,7 +175,9 @@ async def update_tenant_messages(
         tenant: str,
         skip: int = 0,
         limit: int = 100,
-        db_mailstore: Session = Depends(deps.get_mailstore_db)
+        _=Depends(deps.assert_tenant),
+        # db_mailstore: Session = Depends(deps.get_mailstore_db)
+        db_mailstore: Session = Depends(deps.get_tenant_mailstore_db)
 ) -> List[SECorrespondenceUpdate]:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
@@ -174,7 +194,7 @@ async def update_tenant_messages(
 
 
 @router.post("/users/{id}/sendMail", status_code=202)
-async def send_mail(tenant: str, id: str, message: SendMessageRequestSchema):
+async def send_mail(tenant: str, id: str, message: SendMessageRequestSchema, _=Depends(deps.assert_tenant)):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
         result = MailController.send_mail(token, id, message)

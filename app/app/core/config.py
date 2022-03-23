@@ -169,4 +169,4 @@ class Config:
             raise e
 
 
-configuration = Config.validate_and_load("../configuration")
+configuration = Config.validate_and_load("configuration")

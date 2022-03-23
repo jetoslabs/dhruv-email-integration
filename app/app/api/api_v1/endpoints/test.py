@@ -89,7 +89,7 @@ async def load_global_config():
 
 @router.get("/configuration")
 async def get_configuration() -> Configuration:
-    configuration = Config.validate_and_load("../configuration")
+    configuration = Config.validate_and_load("configuration")
     return configuration
 
 

@@ -8,44 +8,45 @@ from loguru import logger
 from msal import ConfidentialClientApplication
 from pydantic import BaseModel
 
+from app.core.config import AzureAuth, configuration
 from app.core.settings import settings
 
 
-class MsAuthConfig(BaseModel):
-    authority: str
-    client_id: str
-    scope: list
-    secret: str
-    internal_domains: Optional[list]
-    endpoint: str
+# class MsAuthConfig(BaseModel):
+#     authority: str
+#     client_id: str
+#     scope: list
+#     secret: str
+#     internal_domains: Optional[list]
+#     endpoint: Optional[str]
 
 
-class MsAuthConfigs(BaseModel):
-    configs: Dict[str, MsAuthConfig]
+# class MsAuthConfigs(BaseModel):
+#     configs: Dict[str, MsAuthConfig]
 
 
-def load_ms_auth_configs(filepath: str) -> MsAuthConfigs:
-    try:
-        configs_dict: dict = json.load(open(filepath))
-        configs = MsAuthConfigs(**configs_dict)
-        return configs
-    except Exception as e:
-        logger.bind(error=e, filepath=filepath).error(
-            f"Error while loading ms_auth_configs, filepath = {filepath}... Exiting\n {e}")
-        sys.exit(1)
+# def load_ms_auth_configs(filepath: str) -> MsAuthConfigs:
+#     try:
+#         configs_dict: dict = json.load(open(filepath))
+#         configs = MsAuthConfigs(**configs_dict)
+#         return configs
+#     except Exception as e:
+#         logger.bind(error=e, filepath=filepath).error(
+#             f"Error while loading ms_auth_configs, filepath = {filepath}... Exiting\n {e}")
+#         sys.exit(1)
 
 
-def get_ms_auth_config(tenant: str) -> MsAuthConfig:
-    config = ms_auth_configs.configs[tenant]
-    return config
+# def get_ms_auth_config(tenant: str) -> MsAuthConfig:
+#     config = ms_auth_configs.configs[tenant]
+#     return config
 
 
 # TODO: move var - this is one of the many vars for global store
 # ms_auth_configs = load_ms_auth_configs("../configuration/ms_auth_configs.json")
-ms_auth_configs = load_ms_auth_configs(f"{settings.CONFIGURATION_PATH}configuration/ms_auth_configs.json")
+# ms_auth_configs = load_ms_auth_configs(f"{settings.CONFIGURATION_PATH}configuration/ms_auth_configs.json")
 
 
-def get_confidential_client_application(config) -> ConfidentialClientApplication:
+def get_confidential_client_application(config: AzureAuth) -> ConfidentialClientApplication:
     # TODO: make ConfidentialClientApplication long-lived (should be 1 for each tenant)
     app: ConfidentialClientApplication = msal.ConfidentialClientApplication(
         config.client_id,
@@ -59,7 +60,7 @@ def get_confidential_client_application(config) -> ConfidentialClientApplication
     return app
 
 
-def get_access_token(config: MsAuthConfig, app: ConfidentialClientApplication):
+def get_access_token(config: AzureAuth, app: ConfidentialClientApplication):
     logger.bind().info("Getting access token")
     # The pattern to acquire a token looks like this.
     result = None
@@ -81,9 +82,9 @@ client_app:  ConfidentialClientApplication = None
 
 def get_auth_config_and_confidential_client_application_and_access_token(
         tenant
-) -> Union[Tuple[MsAuthConfig, ConfidentialClientApplication, Any], Tuple[None, None, None]]:
+) -> Union[Tuple[AzureAuth, ConfidentialClientApplication, Any], Tuple[None, None, None]]:
     global client_app
-    config = get_ms_auth_config(tenant)
+    config = configuration.get_ms_auth_config(tenant)
     if config is not None:
         if client_app is None:
             client_app = get_confidential_client_application(config)

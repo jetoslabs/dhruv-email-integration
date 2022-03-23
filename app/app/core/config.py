@@ -116,6 +116,9 @@ class Configuration(BaseModel):
     system_configuration: SystemConfiguration
     tenant_configurations: Dict[str, TenantConfiguration]
 
+    def get_ms_auth_config(self, tenant: str) -> AzureAuth:
+        return self.tenant_configurations.get(tenant).azure_auth
+
 
 class ConfigurationException(Exception):
     pass

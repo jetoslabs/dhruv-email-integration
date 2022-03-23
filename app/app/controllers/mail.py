@@ -13,8 +13,8 @@ from app.apiclients.api_client import ApiClient
 from app.apiclients.endpoint_ms import MsEndpointHelper, MsEndpointsHelper, endpoints_ms
 from app.apiclients.file_client import FileHelper
 from app.controllers.user import UserController
-from app.core.auth import get_ms_auth_config, MsAuthConfig
-from app.core.config import global_config, configuration, MailIntegrateJobDependency
+# from app.core.auth import get_ms_auth_config, MsAuthConfig
+from app.core.config import global_config, configuration, MailIntegrateJobDependency, AzureAuth
 from app.crud.crud_se_correspondence import CRUDSECorrespondence
 from app.crud.stored_procedures import StoredProcedures
 from app.models.se_correspondence import SECorrespondence
@@ -512,6 +512,10 @@ class MailProcessor:
                     obj_in = map_MessageSchema_to_SECorrespondenceCreate(
                         message, email_link_info, process_time
                     )
+                else:
+                    logger.bind(
+                        message_internetMessageId=message.internetMessageId, message_subject=message.subject
+                    ).error("Discarding message")
             elif is_check_EmailLink and not is_check_DhruvOrigin:
                 # check if we can process message
                 if len(email_link_info.AccountCode) > 0:
@@ -554,7 +558,7 @@ class MailProcessor:
 
     @staticmethod
     def is_internal_address(tenant: str, address: str) -> bool:
-        tenant_config: MsAuthConfig = get_ms_auth_config(tenant)
+        tenant_config: AzureAuth = configuration.get_ms_auth_config(tenant)
         for domain in tenant_config.internal_domains:
             if domain.lower() in address.lower(): return True
         return False
@@ -591,7 +595,8 @@ def get_attachments_path_from_id(id: int, *, min_length=6) -> str:
 
 
 def add_filter_to_leave_out_internal_domain_messages(tenant_id: str, filter: str) -> str:
-    tenant_ms_auth_config = get_ms_auth_config(tenant_id)
+    # tenant_ms_auth_config = get_ms_auth_config(tenant_id)
+    tenant_ms_auth_config = configuration.get_ms_auth_config(tenant_id)
     internal_domains: list = tenant_ms_auth_config.internal_domains
     new_filter = filter
     for domain in internal_domains:

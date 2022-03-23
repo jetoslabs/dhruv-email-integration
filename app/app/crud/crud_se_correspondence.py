@@ -62,6 +62,23 @@ class CRUDSECorrespondence(CRUDBase[SECorrespondence, SECorrespondenceCreate, SE
                 db_objs.append(db_obj)
         return db_objs
 
+    def is_mail_chain_origin_in_dhruv(self, db: Session, *, from_address: str, subject: str) -> bool:
+        try:
+            result = db.query(self.model) \
+                .where(self.model.MailTo is from_address) \
+                .where(self.model.MailSubject is subject) \
+                .first()
+                # .where(self.model.MailTo.startswith(from_address)) \
+                # .where(self.model.MailTo.endswith(from_address)) \
+                # .where(self.model.MailSubject.startswith(subject)) \
+                # .where(self.model.MailSubject.endswith(from_address)) \
+                # .first()
+            return result
+        except Exception as e:
+            logger.bind(e=e).error("Error in is_mail_chain_origin_in_dhruv")
+
+
+
     def update_conversation_id(
             self, db: Session, *, se_correspondence_update: SECorrespondenceUpdate
     ) -> SECorrespondenceUpdate:

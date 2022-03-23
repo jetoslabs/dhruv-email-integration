@@ -14,7 +14,7 @@ from app.apiclients.endpoint_ms import MsEndpointHelper, MsEndpointsHelper, endp
 from app.apiclients.file_client import FileHelper
 from app.controllers.user import UserController
 from app.core.auth import get_ms_auth_config, MsAuthConfig
-from app.core.config import global_config
+from app.core.config import global_config, configuration, MailIntegrateJobDependency
 from app.crud.crud_se_correspondence import CRUDSECorrespondence
 from app.crud.stored_procedures import StoredProcedures
 from app.models.se_correspondence import SECorrespondence
@@ -28,6 +28,16 @@ class MailController:
 
     @staticmethod
     async def get_messages(token: Any, tenant: str, user_id: str, top: int, filter: str) -> Optional[MessagesSchema]:
+        """
+        Queries msgraph to get messages
+
+        :param token: Any
+        :param tenant: str
+        :param user_id: str
+        :param top: int
+        :param filter: str
+        :return: Optional[MessagesSchema]
+        """
         endpoint = MsEndpointsHelper.get_endpoint("message:list", endpoints_ms)
         endpoint.request_params['id'] = user_id
         endpoint.optional_query_params.top = str(top) if 0 < top <= 1000 else str(10)
@@ -44,6 +54,16 @@ class MailController:
 
     @staticmethod
     async def get_messages_while_nextlink(token: Any, tenant: str, user_id: str, top: int, filter: str) -> List[MessageSchema]:
+        """
+        Continuously queries in msgraph for messages
+
+        :param token: Any
+        :param tenant: str
+        :param user_id: str
+        :param top: int
+        :param filter: str
+        :return: List[MessageSchema]
+        """
         # messages: List[MessageSchema] = []
         messages_schema: Optional[MessagesSchema] = await MailController.get_messages(token, tenant, user_id, top, filter)
         messages = messages_schema.value
@@ -57,6 +77,14 @@ class MailController:
 
     @staticmethod
     async def get_message(token: Any, user_id: str, message_id: str) -> Optional[MessageResponseSchema]:
+        """
+        Query msgraph to get message for a messageId
+
+        :param token: Any
+        :param user_id: str
+        :param message_id: str
+        :return: Optional[MessageResponseSchema]
+        """
         endpoint = MsEndpointsHelper.get_endpoint("message:get", endpoints_ms)
         endpoint.request_params["id"] = user_id
         endpoint.request_params["message_id"] = message_id
@@ -70,16 +98,27 @@ class MailController:
     #     pass
 
     @staticmethod
-    async def process_and_load_user_messages_to_db(
+    async def process_and_save_user_messages(
             tenant: str,
             user: UserResponseSchema,
             messages: List[MessageSchema],
             db_fit: Session,
             db_mailstore: Session,
             process_ind: str
-    ):
+    ) -> List[SECorrespondence]:
+        """
+        Process messages for user and save to mailstore
+
+        :param tenant: str
+        :param user: UserResponseSchema
+        :param messages: List[MessageSchema]
+        :param db_fit: Session
+        :param db_mailstore: Session
+        :param process_ind: str
+        :return: List[SECorrespondence]
+        """
         processed_messages: List[SECorrespondenceCreate] = await MailProcessor.process_messages(
-            tenant, user, messages, db_fit, process_ind
+            tenant, user, messages, db_fit, db_mailstore, process_ind
         )
         se_correspondence_rows = CRUDSECorrespondence(SECorrespondence)\
             .get_by_mail_unique_id_or_create_get_if_not_exist_multi(db_mailstore, obj_ins=processed_messages)
@@ -95,6 +134,18 @@ class MailController:
             top: int = 5,
             filter: str = "",
     ) -> (List[SECorrespondence], List[str]):
+        """
+        Save user messages and attachments
+
+        :param token: Any
+        :param tenant: str
+        :param id: str
+        :param db_fit: Session
+        :param db_mailstore: Session
+        :param top: int
+        :param filter: str
+        :return: (List[SECorrespondence], List[str])
+        """
         req_epoch: str = str(int(time.time()))
         messages: List[MessageSchema] = await MailController.get_messages_while_nextlink(token, tenant, id, top, filter)
         if messages is None or len(messages) == 0:
@@ -107,7 +158,7 @@ class MailController:
             return None
         # save messages
         logger.bind().info("Saving messages")
-        se_correspondence_rows: List[SECorrespondence] = await MailController.process_and_load_user_messages_to_db(
+        se_correspondence_rows: List[SECorrespondence] = await MailController.process_and_save_user_messages(
             tenant, user, messages, db_fit, db_mailstore, req_epoch
         )
         # save attachments
@@ -118,6 +169,14 @@ class MailController:
 
     @staticmethod
     async def get_message_attachments(token: Any, user_id: str, message_id: str) -> AttachmentsSchema:
+        """
+        Get message attachments from msgraph
+
+        :param token: Any
+        :param user_id: str
+        :param message_id: str
+        :return: AttachmentsSchema
+        """
         endpoint = MsEndpointsHelper.get_endpoint("message:list:attachment", endpoints_ms)
         endpoint.request_params["id"] = user_id
         endpoint.request_params["message_id"] = message_id
@@ -133,6 +192,16 @@ class MailController:
     async def save_message_attachments(
             db_mailstore: Session, token: Any, user_id: str, message_id: str, internet_message_id: str
     ) -> Optional[List[str]]:
+        """
+        Save message attachments to disk if message is present in db
+
+        :param db_mailstore: Session
+        :param token: Any
+        :param user_id: str
+        :param message_id: str
+        :param internet_message_id: str
+        :return: Optional[List[str]]
+        """
         attachments_schema: AttachmentsSchema = await MailController.get_message_attachments(token, user_id, message_id)
         if attachments_schema is None or attachments_schema.value is None:
             return None
@@ -149,6 +218,14 @@ class MailController:
 
     @staticmethod
     async def save_attachments_to_disk_if_message_in_db(db_mailstore: Session, internet_message_id: str, attachments: List[AttachmentSchema]) -> Optional[List[str]]:
+        """
+        Save message attachments to disk if message is present in db
+
+        :param db_mailstore:
+        :param internet_message_id:
+        :param attachments:
+        :return:
+        """
         correspondence: Optional[SECorrespondence] = await MailController.get_mail_from_db(internet_message_id, db_mailstore)
         if correspondence is None:
             return None
@@ -171,6 +248,15 @@ class MailController:
 
     @staticmethod
     async def process_and_save_user_messages_attachments_to_disk(token:Any, id: str, messages: List[MessageSchema], db_mailstore: Session) -> List[str]:
+        """
+        Process and save user messages-attachments to disk
+
+        :param token: Any
+        :param id: str
+        :param messages: List[MessageSchema]
+        :param db_mailstore: Session
+        :return: List[str]
+        """
         links: List[str] = []
         for message in messages:
             if not message.hasAttachments:
@@ -188,6 +274,12 @@ class MailController:
 
     @staticmethod
     async def get_mail_from_db(internet_message_id: str, db_mailstore: Session) -> Optional[SECorrespondence]:
+        """
+
+        :param internet_message_id: str
+        :param db_mailstore: Session
+        :return: Optional[SECorrespondence]
+        """
         correspondence: Optional[SECorrespondence] = \
             CRUDSECorrespondence(SECorrespondence).get_by_mail_unique_id(db_mailstore, mail_unique_id=internet_message_id)
         if correspondence is None:
@@ -218,7 +310,7 @@ class MailController:
         user: UserResponseSchema = UserResponseSchema(**user_dict)
         # save messages
         se_correspondence_rows: List[SECorrespondence] = \
-            await MailController.process_and_load_user_messages_to_db(tenant, user, [message], db_fit, db_mailstore, req_epoch)
+            await MailController.process_and_save_user_messages(tenant, user, [message], db_fit, db_mailstore, req_epoch)
         # save attachments
         links = []
         message_links = await MailController.save_message_attachments(db_mailstore, token, id, message.id, message.internetMessageId)
@@ -331,12 +423,23 @@ class MailProcessor:
             user: UserResponseSchema,
             messages: List[MessageSchema],
             db_fit: Session,
+            db_mailstore: Session,
             process_ind: str
     ) -> List[SECorrespondenceCreate]:
+        """
+
+        :param tenant: str
+        :param user: UserResponseSchema
+        :param messages: List[MessageSchema]
+        :param db_fit: Session
+        :param db_mailstore: Session
+        :param process_ind: str
+        :return: List[SECorrespondenceCreate]
+        """
         se_correspondence_create_schemas: List[SECorrespondenceCreate] = []
         for message in messages:
             obj_in: Optional[SECorrespondenceCreate] = await MailProcessor.process_message(
-                tenant, user, message, db_fit, process_ind
+                tenant, user, message, db_fit, db_mailstore, process_ind
             )
             if obj_in is not None:
                 se_correspondence_create_schemas.append(obj_in)
@@ -348,6 +451,7 @@ class MailProcessor:
             user: UserResponseSchema,
             message: MessageSchema,
             db_fit: Session,
+            db_mailstore: Session,
             process_time: str = str(int(time.time()))
     ) -> Optional[SECorrespondenceCreate]:
         obj_in: Optional[SECorrespondenceCreate] = None
@@ -359,7 +463,7 @@ class MailProcessor:
                 # process message only if it is related to a client
                 if not MailProcessor.is_internal_address(tenant, to_address):
                     obj_in: Optional[SECorrespondenceCreate] = await MailProcessor.process_or_discard_message(
-                        tenant, to_address, message, db_fit, process_time
+                        tenant, to_address, message, db_fit, db_mailstore, process_time
                     )
                     if obj_in is not None:
                         break
@@ -369,7 +473,7 @@ class MailProcessor:
             if not MailProcessor.is_internal_address(tenant, from_address):
                 obj_in: Optional[SECorrespondenceCreate] = \
                     await MailProcessor.process_or_discard_message(
-                        tenant, from_address, message, db_fit, process_time
+                        tenant, from_address, message, db_fit, db_mailstore, process_time
                     )
         return obj_in
 
@@ -379,24 +483,61 @@ class MailProcessor:
             email_address: str,
             message: MessageSchema,
             db_fit: Session,
+            db_mailstore: Session,
             process_time: str = str(int(time.time()))
     ) -> Optional[SECorrespondenceCreate]:
         obj_in: Optional[SECorrespondenceCreate] = None
         if not MailProcessor.is_internal_address(tenant, email_address):
             # logger.bind(email=email_address, message=message.id).debug("process_or_discard_message")
+            # get email_link_info
             email_link_info: EmailTrackerGetEmailLinkInfo = await MailProcessor.get_email_link_from_dhruv(
-                email_address, message.sentDateTime, message.conversationId[:44], db_fit
+                email_address, message.sentDateTime, message.conversationId, db_fit
             )
-            if len(email_link_info.AccountCode) > 0:
-                obj_in = map_MessageSchema_to_SECorrespondenceCreate(
-                    message, email_link_info, process_time
-                )
+            # get is_email_chain_origin
+            is_mail_chain_origin_in_dhruv: bool = await MailProcessor.is_mail_chain_origin_in_dhruv(
+                db_mailstore, message.from_email.emailAddress.address, message.subject
+            )
+
+            obj_in: Optional[SECorrespondenceCreate] = None
+            dependencies = configuration.tenant_configurations.get(tenant).mail_integrate_job.dependencies
+            is_check_DhruvOrigin: bool = MailIntegrateJobDependency.DhruvOrigin in dependencies
+            is_check_EmailLink: bool = MailIntegrateJobDependency.EmailLink in dependencies
+            if is_check_EmailLink and is_check_DhruvOrigin:
+                # check if we can process message
+                if len(email_link_info.AccountCode) > 0 or is_mail_chain_origin_in_dhruv:
+                    # process
+                    logger.bind(
+                        dependencies=dependencies, email=email_address,
+                        message=message.internetMessageId, subject=message.subject).info("processed message")
+                    obj_in = map_MessageSchema_to_SECorrespondenceCreate(
+                        message, email_link_info, process_time
+                    )
+            elif is_check_EmailLink and not is_check_DhruvOrigin:
+                # check if we can process message
+                if len(email_link_info.AccountCode) > 0:
+                    # process
+                    logger.bind(
+                        dependencies=dependencies, email=email_address,
+                        message=message.internetMessageId, subject=message.subject).info("processed message")
+                    obj_in = map_MessageSchema_to_SECorrespondenceCreate(
+                        message, email_link_info, process_time
+                    )
+            elif not is_check_EmailLink and is_check_DhruvOrigin:
+                # check if we can process message
+                if is_mail_chain_origin_in_dhruv:
+                    # process
+                    logger.bind(
+                        dependencies=dependencies,email=email_address,
+                        message=message.internetMessageId, subject=message.subject).info("processed message")
+                    obj_in = map_MessageSchema_to_SECorrespondenceCreate(
+                        message, email_link_info, process_time
+                    )
         return obj_in
 
     @staticmethod
-    async def get_email_link_from_dhruv(email: str, date: str, conversation_id_44: str, db: Session) -> EmailTrackerGetEmailLinkInfo:
+    async def get_email_link_from_dhruv(email: str, date: str, conversation_id: str, db: Session) -> EmailTrackerGetEmailLinkInfo:
         # get email link info from dhruv
-        email_link_info_params = EmailTrackerGetEmailLinkInfoParams(email=email, date=date, conversation_id_44=conversation_id_44)
+        email_link_info_params = EmailTrackerGetEmailLinkInfoParams(email=email, date=date, conversation_id=conversation_id)
         email_links_info = \
             await StoredProcedures.dhruv_EmailTrackerGetEmailLinkInfo(db, email_link_info_params)
         return email_links_info[0]
@@ -412,15 +553,22 @@ class MailProcessor:
             print(f"TODO: investigate, \n{e}")
 
     @staticmethod
-    def is_internal_address(tenant: str, address: str):
+    def is_internal_address(tenant: str, address: str) -> bool:
         tenant_config: MsAuthConfig = get_ms_auth_config(tenant)
         for domain in tenant_config.internal_domains:
             if domain.lower() in address.lower(): return True
         return False
 
     @staticmethod
-    def is_external_address(tenant: str, address: str):
+    def is_external_address(tenant: str, address: str) -> bool:
         return not MailProcessor.is_internal_address(tenant, address)
+
+    @staticmethod
+    async def is_mail_chain_origin_in_dhruv(db: Session, from_address: str, subject: str) -> bool:
+        is_origin_dhruv = CRUDSECorrespondence(SECorrespondence).is_mail_chain_origin_in_dhruv(
+            db, from_address=from_address, subject=subject
+        )
+        return is_origin_dhruv is not None
 
 
 def get_attachments_path_from_id(id: int, *, min_length=6) -> str:

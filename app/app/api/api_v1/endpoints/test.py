@@ -12,7 +12,7 @@ from app.apiclients.api_client import ApiClient
 from app.apiclients.aws_client import AWSClientHelper, boto3_session
 from app.apiclients.endpoint_ms import MsEndpointsHelper
 from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
-from app.core.config import GlobalConfigHelper, global_config
+from app.core.config import GlobalConfigHelper, global_config, Config, Configuration
 from app.crud.stored_procedures import StoredProcedures
 from app.initial_data import init
 from app.schemas.schema_sp import EmailTrackerGetEmailLinkInfoParams
@@ -83,6 +83,12 @@ async def load_endpoints_ms():
 @router.get("/load_global_config")
 async def load_global_config():
     return GlobalConfigHelper._load_global_config("../configuration/config.yml")
+
+
+@router.get("/configuration")
+async def get_configuration() -> Configuration:
+    configuration = Config.validate_and_load("../configuration")
+    return configuration
 
 
 @router.get("/save_to_s3")

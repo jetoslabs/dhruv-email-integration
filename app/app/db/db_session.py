@@ -3,7 +3,6 @@ import urllib.parse
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
-from app.core.config import global_config
 
 
 def get_sqlalchemy_url(db_name: str) -> str:

@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from fastapi.responses import Response
 
 from app.core.auth import get_confidential_client_application, get_access_token
-from app.core.config import global_config, configuration, AzureAuth
+from app.core.config import configuration, AzureAuth
 from app.db.db_session import get_db_engine, get_db_session
 
 

@@ -14,7 +14,7 @@ from app.apiclients.endpoint_ms import MsEndpointHelper, MsEndpointsHelper, endp
 from app.apiclients.file_client import FileHelper
 from app.controllers.user import UserController
 # from app.core.auth import get_ms_auth_config, MsAuthConfig
-from app.core.config import global_config, configuration, MailIntegrateJobDependency, AzureAuth
+from app.core.config import configuration, MailIntegrateJobDependency, AzureAuth
 from app.crud.crud_se_correspondence import CRUDSECorrespondence
 from app.crud.stored_procedures import StoredProcedures
 from app.models.se_correspondence import SECorrespondence

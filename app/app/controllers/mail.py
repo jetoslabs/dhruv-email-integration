@@ -163,7 +163,7 @@ class MailController:
         )
         # save attachments
         links: List[str] = await MailController.process_and_save_user_messages_attachments_to_disk(
-            token, id, messages, db_mailstore
+            token, tenant, id, messages, db_mailstore
         )
         return se_correspondence_rows, links
 
@@ -190,11 +190,12 @@ class MailController:
 
     @staticmethod
     async def save_message_attachments(
-            db_mailstore: Session, token: Any, user_id: str, message_id: str, internet_message_id: str
+            tenant: str, db_mailstore: Session, token: Any, user_id: str, message_id: str, internet_message_id: str
     ) -> Optional[List[str]]:
         """
         Save message attachments to disk if message is present in db
 
+        :param tenant str
         :param db_mailstore: Session
         :param token: Any
         :param user_id: str
@@ -207,6 +208,7 @@ class MailController:
             return None
         attachments = attachments_schema.value
         links: Optional[List[str]] = await MailController.save_attachments_to_disk_if_message_in_db(
+            tenant,
             db_mailstore,
             internet_message_id,
             attachments
@@ -217,10 +219,11 @@ class MailController:
         return links
 
     @staticmethod
-    async def save_attachments_to_disk_if_message_in_db(db_mailstore: Session, internet_message_id: str, attachments: List[AttachmentSchema]) -> Optional[List[str]]:
+    async def save_attachments_to_disk_if_message_in_db(tenant: str, db_mailstore: Session, internet_message_id: str, attachments: List[AttachmentSchema]) -> Optional[List[str]]:
         """
         Save message attachments to disk if message is present in db
 
+        :param tenant: str
         :param db_mailstore:
         :param internet_message_id:
         :param attachments:
@@ -240,18 +243,22 @@ class MailController:
             filename = attachment.name
             file_relative_path = get_attachments_path_from_id(correspondence.SeqNo)
             saved_to = await FileHelper.get_or_save_get_in_disk(
-                BytesIO(content), global_config.disk_base_path, file_relative_path, filename
+                BytesIO(content),
+                configuration.tenant_configurations.get(tenant).disk.disk_base_path,
+                file_relative_path,
+                filename
             )
             logger.bind(saved_to=saved_to).info("Saved to disk")
             links.append(saved_to)
         return links
 
     @staticmethod
-    async def process_and_save_user_messages_attachments_to_disk(token:Any, id: str, messages: List[MessageSchema], db_mailstore: Session) -> List[str]:
+    async def process_and_save_user_messages_attachments_to_disk(token:Any, tenant: str, id: str, messages: List[MessageSchema], db_mailstore: Session) -> List[str]:
         """
         Process and save user messages-attachments to disk
 
         :param token: Any
+        :param tenant: str
         :param id: str
         :param messages: List[MessageSchema]
         :param db_mailstore: Session
@@ -265,7 +272,7 @@ class MailController:
             if await MailController.get_mail_from_db(message.internetMessageId, db_mailstore) is None:
                 logger.bind(internet_message_id=message.internetMessageId).debug("Mail Not found in db")
                 continue
-            message_links = await MailController.save_message_attachments(db_mailstore, token, id, message.id, message.internetMessageId)
+            message_links = await MailController.save_message_attachments(tenant, db_mailstore, token, id, message.id, message.internetMessageId)
             if message_links is None:
                 logger.bind().debug("No attachment saved")
                 continue
@@ -313,7 +320,7 @@ class MailController:
             await MailController.process_and_save_user_messages(tenant, user, [message], db_fit, db_mailstore, req_epoch)
         # save attachments
         links = []
-        message_links = await MailController.save_message_attachments(db_mailstore, token, id, message.id, message.internetMessageId)
+        message_links = await MailController.save_message_attachments(tenant, db_mailstore, token, id, message.id, message.internetMessageId)
         links.append(",".join(message_links))
         return se_correspondence_rows, links
 

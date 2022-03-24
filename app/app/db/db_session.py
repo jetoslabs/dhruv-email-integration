@@ -24,10 +24,10 @@ def get_db_session(eng: Engine):
 
 
 # create an engine
-engine = create_engine(get_sqlalchemy_url(global_config.db_sales97_name), pool_pre_ping=True)
+# engine = create_engine(get_sqlalchemy_url(global_config.db_sales97_name), pool_pre_ping=True)
 
 # create a configured "Session" class
-SessionLocal = sessionmaker(bind=engine)
+# SessionLocal = sessionmaker(bind=engine)
 
 # create a Session
 # db_session = SessionLocal()

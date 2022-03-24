@@ -81,7 +81,7 @@ async def save_message_attachments(
 ) -> List[str]:
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
-        links = await MailController.save_message_attachments(db, token, id, message_id, internet_message_id)
+        links = await MailController.save_message_attachments(tenant, db, token, id, message_id, internet_message_id)
         if links is None:
             raise HTTPException(status_code=404)
         if len(links) == 0:
@@ -151,7 +151,7 @@ async def save_tenant_messages_and_attachments(
         top: int = 5,
         filter="",
         _=Depends(deps.assert_tenant),
-        db_sales97: Session = Depends(deps.get_sales97_db),
+        db_sales97: Session = Depends(deps.get_tenant_sales97_db),
         db_fit: Session = Depends(deps.get_tenant_fit_db),
         db_mailstore: Session = Depends(deps.get_tenant_mailstore_db)
 ) -> (List[UserSchema], List[SECorrespondence], List[str]):

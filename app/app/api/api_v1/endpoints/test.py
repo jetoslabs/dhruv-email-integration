@@ -14,7 +14,7 @@ from app.apiclients.endpoint_ms import MsEndpointsHelper
 from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
 from app.core.config import GlobalConfigHelper, global_config, Config, Configuration, configuration
 from app.crud.stored_procedures import StoredProcedures
-from app.initial_data import init
+# from app.initial_data import init
 from app.schemas.schema_sp import EmailTrackerGetEmailLinkInfoParams
 
 router = APIRouter()
@@ -105,7 +105,7 @@ async def save_to_s3():
 @router.get("/init_db")
 async def init_db():
     logger.info("Creating initial data")
-    init()
+    # init()
     logger.info("Initial data created")
     return "done"
 

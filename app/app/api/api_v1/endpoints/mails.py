@@ -136,6 +136,7 @@ async def save_user_messages_and_attachments(
                                                                     filter)
         if len(se_correspondence_rows) == 0 and len(links) == 0:
             raise HTTPException(status_code=404)
+        return se_correspondence_rows, links
     else:
         logger.bind(
             error=token.get("error"),

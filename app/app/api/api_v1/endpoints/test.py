@@ -9,12 +9,12 @@ from sqlalchemy.orm import Session
 
 from app.api import deps
 from app.apiclients.api_client import ApiClient
-from app.apiclients.aws_client import AWSClientHelper, boto3_session
+from app.apiclients.aws_client import AWSClientHelper, get_tenant_boto3_session
 from app.apiclients.endpoint_ms import MsEndpointsHelper
 from app.core.auth import get_auth_config_and_confidential_client_application_and_access_token
-from app.core.config import GlobalConfigHelper, global_config, Config, Configuration, configuration
+from app.core.config import Config, Configuration, configuration
 from app.crud.stored_procedures import StoredProcedures
-from app.initial_data import init
+# from app.initial_data import init
 from app.schemas.schema_sp import EmailTrackerGetEmailLinkInfoParams
 
 router = APIRouter()
@@ -82,9 +82,9 @@ async def load_endpoints_ms():
     return MsEndpointsHelper._load_endpoints_ms("../configuration/endpoints_ms.json")
 
 
-@router.get("/load_global_config")
-async def load_global_config():
-    return GlobalConfigHelper._load_global_config("../configuration/config.yml")
+# @router.get("/load_global_config")
+# async def load_global_config():
+#     return GlobalConfigHelper._load_global_config("../configuration/config.yml")
 
 
 @router.get("/configuration")
@@ -94,30 +94,31 @@ async def get_configuration() -> Configuration:
 
 
 @router.get("/save_to_s3")
-async def save_to_s3():
+async def save_to_s3(tenant: str):
+    aws_config = configuration.tenant_configurations.get(tenant).aws
     return await AWSClientHelper.save_to_s3(
-        boto3_session,
+        get_tenant_boto3_session(tenant),
         BytesIO(b'okokok'),
-        global_config.s3_root_bucket,
-        global_config.s3_default_object_prefix+"okokok.txt")
+        aws_config.s3_root_bucket,
+        aws_config.s3_default_object_prefix+"okokok.txt")
 
 
 @router.get("/init_db")
 async def init_db():
     logger.info("Creating initial data")
-    init()
+    # init()
     logger.info("Initial data created")
     return "done"
 
 
 @router.get("/stored_procedure/EmailTrackerGetEmailIDSchema")
-async def stored_procedure(db: Session = Depends(deps.get_sales97_db)):
+async def stored_procedure(db: Session = Depends(deps.get_tenant_sales97_db)):
     res = await StoredProcedures.dhruv_EmailTrackerGetEmailID(db)
     return res
 
 
 @router.get("/stored_procedure/EmailTrackerGetEmailLinkInfo")
-async def stored_procedure(db: Session = Depends(deps.get_fit_db)):
+async def stored_procedure(db: Session = Depends(deps.get_tenant_fit_db)):
     res = await StoredProcedures.dhruv_EmailTrackerGetEmailLinkInfo(
         db,
         EmailTrackerGetEmailLinkInfoParams(

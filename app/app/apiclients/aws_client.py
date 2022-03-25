@@ -4,7 +4,8 @@ import boto3
 from botocore.exceptions import ClientError
 from loguru import logger
 
-from app.core.config import global_config
+# from app.core.config import global_config
+from app.core.config import configuration
 
 
 class AWSClientHelper:
@@ -65,8 +66,18 @@ class AWSClientHelper:
 
 
 # TODO: move var
-boto3_session = AWSClientHelper._build_boto3_session(
-    global_config.aws_access_key_id,
-    global_config.aws_access_secret,
-    global_config.aws_region
-)
+# boto3_session = AWSClientHelper._build_boto3_session(
+#     global_config.aws_access_key_id,
+#     global_config.aws_access_secret,
+#     global_config.aws_region
+# )
+
+
+def get_tenant_boto3_session(tenant: str) -> boto3.Session:
+    aws_config = configuration.tenant_configurations.get(tenant).aws
+    boto3_session = AWSClientHelper._build_boto3_session(
+        aws_config.aws_access_key_id,
+        aws_config.aws_access_secret,
+        aws_config.aws_region
+    )
+    return boto3_session

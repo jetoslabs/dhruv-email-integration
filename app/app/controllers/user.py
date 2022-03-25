@@ -41,7 +41,8 @@ class UserController:
         endpoint = MsEndpointsHelper.get_endpoint("user:list", endpoints_ms)
         endpoint.optional_query_params.top = 5
         endpoint.optional_query_params.select = select
-        endpoint.optional_query_params.filter = f"mail eq '{user_email}'"
+        # endpoint.optional_query_params.filter = f"mail eq '{user_email}'"
+        endpoint.optional_query_params.filter = f"mail in ('{user_email}') or proxyAddresses/any(x:x eq 'smtp:{user_email}')"
         url = MsEndpointHelper.form_url(endpoint)
         response, data = await ApiClient('get', url, headers=ApiClient.get_headers(token)).retryable_call()
         if data is None or "value" not in data or len(data["value"]) == 0:

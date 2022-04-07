@@ -67,7 +67,7 @@ class MailController:
         # messages: List[MessageSchema] = []
         messages_schema: Optional[MessagesSchema] = await MailController.get_messages(token, tenant, user_id, top, filter)
         messages = messages_schema.value
-        while messages_schema.odata_nextLink:
+        while messages is not None and messages_schema.odata_nextLink:
             api_client = ApiClient('get', messages_schema.odata_nextLink, headers=ApiClient.get_headers(token), timeout_sec=30)
             response, data = await api_client.retryable_call()
             messages_schema = MessagesSchema(**data)
@@ -150,12 +150,12 @@ class MailController:
         messages: List[MessageSchema] = await MailController.get_messages_while_nextlink(token, tenant, id, top, filter)
         if messages is None or len(messages) == 0:
             logger.bind().error("no messages")
-            return None
+            return None, None
         # get user
         user: Optional[UserResponseSchema] = await UserController.get_user(token, id)
         if user is None:
             logger.bind().error("no user")
-            return None
+            return None, None
         # save messages
         logger.bind().info("Saving messages")
         se_correspondence_rows: List[SECorrespondence] = await MailController.process_and_save_user_messages(
@@ -308,20 +308,22 @@ class MailController:
         if message_response_schema is None:
             logger.bind().error("Could not find message")
             return None
-        message = MessageSchema(**(message_response_schema.dict()))
+        message_response_schema_dict = message_response_schema.dict()
+        message_response_schema_dict['from'] = message_response_schema.from_email
+        message = MessageSchema(**message_response_schema_dict)
         # get user
         user_dict:  Optional[UserResponseSchema] = await UserController.get_user(token, id)  # TODO: Write UserController.get_user
         if user_dict is None:
             logger.bind().error("Could not find user")
             return None
-        user: UserResponseSchema = UserResponseSchema(**user_dict)
+        user: UserResponseSchema = user_dict
         # save messages
         se_correspondence_rows: List[SECorrespondence] = \
             await MailController.process_and_save_user_messages(tenant, user, [message], db_fit, db_mailstore, req_epoch)
         # save attachments
         links = []
         message_links = await MailController.save_message_attachments(tenant, db_mailstore, token, id, message.id, message.internetMessageId)
-        links.append(",".join(message_links))
+        if message_links is not None: links.append(",".join(message_links))
         return se_correspondence_rows, links
 
     @staticmethod
@@ -343,6 +345,8 @@ class MailController:
             try:
                 rows, links = \
                     await MailController.save_user_messages_and_attachments(token, tenant, user.id, db_fit, db_mailstore, top, filter)
+                if rows is None: rows = []
+                if links is None: links = []
                 logger.bind(tenant=tenant, user=user, rows=len(rows), links=len(links)).info("Saved user messages")
                 if len(rows) > 0: all_rows.append(rows)
                 if len(links) > 0: all_links.append(",".join(links))
@@ -445,11 +449,15 @@ class MailProcessor:
         """
         se_correspondence_create_schemas: List[SECorrespondenceCreate] = []
         for message in messages:
-            obj_in: Optional[SECorrespondenceCreate] = await MailProcessor.process_message(
-                tenant, user, message, db_fit, db_mailstore, process_ind
-            )
-            if obj_in is not None:
-                se_correspondence_create_schemas.append(obj_in)
+            try:
+                obj_in: Optional[SECorrespondenceCreate] = await MailProcessor.process_message(
+                    tenant, user, message, db_fit, db_mailstore, process_ind
+                )
+                if obj_in is not None:
+                    se_correspondence_create_schemas.append(obj_in)
+            except Exception as e:
+                logger.bind().error(f"investigate:\n {e}")
+                continue
         return se_correspondence_create_schemas
 
     @staticmethod
@@ -494,64 +502,73 @@ class MailProcessor:
             process_time: str = str(int(time.time()))
     ) -> Optional[SECorrespondenceCreate]:
         obj_in: Optional[SECorrespondenceCreate] = None
-        if not MailProcessor.is_internal_address(tenant, email_address):
-            # logger.bind(email=email_address, message=message.id).debug("process_or_discard_message")
-            # get email_link_info
-            email_link_info: EmailTrackerGetEmailLinkInfo = await MailProcessor.get_email_link_from_dhruv(
-                email_address, message.sentDateTime, message.conversationId, db_fit
-            )
-            # get is_email_chain_origin
-            is_mail_chain_origin_in_dhruv: bool = await MailProcessor.is_mail_chain_origin_in_dhruv(
-                db_mailstore, message.from_email.emailAddress.address, message.subject
-            )
+        try:
+            if not MailProcessor.is_internal_address(tenant, email_address):
+                # logger.bind(email=email_address, message=message.id).debug("process_or_discard_message")
+                # get email_link_info
+                email_link_info: Optional[EmailTrackerGetEmailLinkInfo] = await MailProcessor.get_email_link_from_dhruv(
+                    email_address, message.subject, message.sentDateTime, '', db_fit
+                )
+                if email_link_info is None:
+                    return obj_in
+                # get is_email_chain_origin
+                is_mail_chain_origin_in_dhruv: bool = await MailProcessor.is_mail_chain_origin_in_dhruv(
+                    db_mailstore, message.from_email.emailAddress.address, message.subject
+                )
 
-            obj_in: Optional[SECorrespondenceCreate] = None
-            dependencies = configuration.tenant_configurations.get(tenant).mail_integrate_job.dependencies
-            is_check_DhruvOrigin: bool = MailIntegrateJobDependency.DhruvOrigin in dependencies
-            is_check_EmailLink: bool = MailIntegrateJobDependency.EmailLink in dependencies
-            if is_check_EmailLink and is_check_DhruvOrigin:
-                # check if we can process message
-                if len(email_link_info.AccountCode) > 0 or is_mail_chain_origin_in_dhruv:
-                    # process
-                    logger.bind(
-                        dependencies=dependencies, email=email_address,
-                        message=message.internetMessageId, subject=message.subject).info("processed message")
-                    obj_in = map_MessageSchema_to_SECorrespondenceCreate(
-                        message, email_link_info, process_time
-                    )
-                else:
-                    logger.bind(
-                        message_internetMessageId=message.internetMessageId, message_subject=message.subject
-                    ).error("Discarding message")
-            elif is_check_EmailLink and not is_check_DhruvOrigin:
-                # check if we can process message
-                if len(email_link_info.AccountCode) > 0:
-                    # process
-                    logger.bind(
-                        dependencies=dependencies, email=email_address,
-                        message=message.internetMessageId, subject=message.subject).info("processed message")
-                    obj_in = map_MessageSchema_to_SECorrespondenceCreate(
-                        message, email_link_info, process_time
-                    )
-            elif not is_check_EmailLink and is_check_DhruvOrigin:
-                # check if we can process message
-                if is_mail_chain_origin_in_dhruv:
-                    # process
-                    logger.bind(
-                        dependencies=dependencies,email=email_address,
-                        message=message.internetMessageId, subject=message.subject).info("processed message")
-                    obj_in = map_MessageSchema_to_SECorrespondenceCreate(
-                        message, email_link_info, process_time
-                    )
+                obj_in: Optional[SECorrespondenceCreate] = None
+                dependencies = configuration.tenant_configurations.get(tenant).mail_integrate_job.dependencies
+                is_check_DhruvOrigin: bool = MailIntegrateJobDependency.DhruvOrigin in dependencies
+                is_check_EmailLink: bool = MailIntegrateJobDependency.EmailLink in dependencies
+                if is_check_EmailLink and is_check_DhruvOrigin:
+                    # check if we can process message
+                    if len(email_link_info.AccountCode) > 0 or is_mail_chain_origin_in_dhruv:
+                        # process
+                        logger.bind(
+                            dependencies=dependencies, email=email_address,
+                            message=message.internetMessageId, subject=message.subject).info("processed message")
+                        obj_in = map_MessageSchema_to_SECorrespondenceCreate(
+                            message, email_link_info, process_time
+                        )
+                    else:
+                        logger.bind(
+                            message_internetMessageId=message.internetMessageId, message_subject=message.subject
+                        ).error("Discarding message")
+                elif is_check_EmailLink and not is_check_DhruvOrigin:
+                    # check if we can process message
+                    if len(email_link_info.AccountCode) > 0:
+                        # process
+                        logger.bind(
+                            dependencies=dependencies, email=email_address,
+                            message=message.internetMessageId, subject=message.subject).info("processed message")
+                        obj_in = map_MessageSchema_to_SECorrespondenceCreate(
+                            message, email_link_info, process_time
+                        )
+                elif not is_check_EmailLink and is_check_DhruvOrigin:
+                    # check if we can process message
+                    if is_mail_chain_origin_in_dhruv:
+                        # process
+                        logger.bind(
+                            dependencies=dependencies,email=email_address,
+                            message=message.internetMessageId, subject=message.subject).info("processed message")
+                        obj_in = map_MessageSchema_to_SECorrespondenceCreate(
+                            message, email_link_info, process_time
+                        )
+        except Exception as e:
+            logger.error(f"Investigate: {e}")
         return obj_in
 
     @staticmethod
-    async def get_email_link_from_dhruv(email: str, date: str, conversation_id: str, db: Session) -> EmailTrackerGetEmailLinkInfo:
+    async def get_email_link_from_dhruv(email: str, subject: str, date: str, conversation_id: str, db: Session) -> Optional[EmailTrackerGetEmailLinkInfo]:
         # get email link info from dhruv
-        email_link_info_params = EmailTrackerGetEmailLinkInfoParams(email=email, date=date, conversation_id=conversation_id)
-        email_links_info = \
-            await StoredProcedures.dhruv_EmailTrackerGetEmailLinkInfo(db, email_link_info_params)
-        return email_links_info[0]
+        try:
+            email_link_info_params = EmailTrackerGetEmailLinkInfoParams(email=email, subject=subject, date=date, conversation_id=conversation_id)
+            email_links_info = \
+                await StoredProcedures.dhruv_EmailTrackerGetEmailLinkInfo(db, email_link_info_params)
+            return email_links_info[0]
+        except Exception as e:
+            logger.bind(email=email, subject=subject).error(f"Investigate: {e}")
+
 
     @staticmethod
     def is_outgoing(user: UserResponseSchema, message: MessageSchema) -> bool:

@@ -123,6 +123,7 @@ async def stored_procedure(db: Session = Depends(deps.get_tenant_fit_db)):
         db,
         EmailTrackerGetEmailLinkInfoParams(
             email='fiona.byrd@gmail.com',
+            subject='',
             date='02/22/2022'
         )
     )

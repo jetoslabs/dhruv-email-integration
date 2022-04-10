@@ -11,7 +11,8 @@ def get_tenant_sqlalchemy_url(tenant: str, db_name: str) -> str:
     safe_string_pwd = urllib.parse.quote_plus(configuration.tenant_configurations.get(tenant).db.db_pwd)
     url = configuration.tenant_configurations.get(tenant).db.db_url.replace("<db_pwd>", safe_string_pwd)
     url = url.replace("<db_name>", db_name)
-    return url
+    url_with_utf8 = f"{url}?charset=utf8"
+    return url_with_utf8
 
 
 def get_tenant_db_engine(tenant: str, db_name: str) -> Engine:

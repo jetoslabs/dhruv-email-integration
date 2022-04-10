@@ -1,4 +1,5 @@
 import base64
+import re
 import time
 from datetime import datetime
 from io import BytesIO
@@ -355,7 +356,7 @@ class MailController:
                     error=token.get("error"),
                     error_description=token.get("error_description"),
                     correlation_id=token.get("correlation_id")
-                ).error(f"investigate:\n {e}")
+                ).error(f"investigate: {e}")
                 continue
         return users, all_rows, all_links
 
@@ -506,14 +507,16 @@ class MailProcessor:
             if not MailProcessor.is_internal_address(tenant, email_address):
                 # logger.bind(email=email_address, message=message.id).debug("process_or_discard_message")
                 # get email_link_info
+                escaped_subject = message.subject.replace("'", "''")
                 email_link_info: Optional[EmailTrackerGetEmailLinkInfo] = await MailProcessor.get_email_link_from_dhruv(
-                    email_address, message.subject, message.sentDateTime, '', db_fit
+                    email_address, escaped_subject, message.sentDateTime, '', db_fit
                 )
                 if email_link_info is None:
                     return obj_in
                 # get is_email_chain_origin
+                subject_with_re_stripped = re.sub(r'([Rr][Ee]:[ ]*)', '', message.subject)
                 is_mail_chain_origin_in_dhruv: bool = await MailProcessor.is_mail_chain_origin_in_dhruv(
-                    db_mailstore, message.from_email.emailAddress.address, message.subject
+                    db_mailstore, message.from_email.emailAddress.address, subject_with_re_stripped  # message.subject
                 )
 
                 obj_in: Optional[SECorrespondenceCreate] = None

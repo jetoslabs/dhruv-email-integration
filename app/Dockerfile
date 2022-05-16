@@ -18,7 +18,7 @@ RUN apt-get update \
 RUN pip install "poetry==$POETRY_VERSION"
 
 # set working dir
-WORKDIR usr/src/o365-manager/app
+WORKDIR usr/src/dhruv-email-integration/app
 
 # Creating folders, and files for a project:
 COPY . .

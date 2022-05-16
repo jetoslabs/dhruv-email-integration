@@ -134,8 +134,6 @@ async def save_user_messages_and_attachments(
         se_correspondence_rows, links = \
             await MailController.save_user_messages_and_attachments(token, tenant, id, db_fit, db_mailstore, top,
                                                                     filter)
-        if len(se_correspondence_rows) == 0 and len(links) == 0:
-            raise HTTPException(status_code=404)
         return se_correspondence_rows, links
     else:
         logger.bind(
@@ -198,7 +196,7 @@ async def update_tenant_messages(
 async def send_mail(tenant: str, id: str, message: SendMessageRequestSchema, _=Depends(deps.assert_tenant)):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
-        result = MailController.send_mail(token, id, message)
+        result = await MailController.send_mail(token, id, message)
         return result
     else:
         logger.bind(

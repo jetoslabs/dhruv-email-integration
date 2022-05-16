@@ -9,7 +9,7 @@ class EmailTrackerGetEmailIDSchema(BaseModel):
 
 class EmailTrackerGetEmailLinkInfoParams(BaseModel):
     email: str
-    empty: str = ''
+    subject: str
     date: str
     conversation_id: str
 

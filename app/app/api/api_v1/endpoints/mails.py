@@ -196,7 +196,7 @@ async def update_tenant_messages(
 async def send_mail(tenant: str, id: str, message: SendMessageRequestSchema, _=Depends(deps.assert_tenant)):
     config, client_app, token = get_auth_config_and_confidential_client_application_and_access_token(tenant)
     if "access_token" in token:
-        result = MailController.send_mail(token, id, message)
+        result = await MailController.send_mail(token, id, message)
         return result
     else:
         logger.bind(

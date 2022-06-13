@@ -6,9 +6,10 @@ multi-tenant email read/send app
 2. Install Poetry
 3. Clone this repo
 4. Copy the Configuration folder in top app folder
-5. Init poetry virtual env
-6. Run cmd `Poetry update`
-7. Run cmd `uvicorn app.main:app --workers 2 --port 9999`
+5. Init poetry virtual env, run cmd `poetry shell`
+6. Activate the shell (this step is usually included as part of `poetry shell` cmd)
+7. Install dependencies, run cmd `poetry update`
+8. Start application, run cmd `uvicorn app.main:app --workers 2 --port 9999`
 
 #### 1. give me list of email for a user between 2 dates
 - a. recevied - return ‘from email’, subject line’, ‘immutable_id’

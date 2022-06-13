@@ -1,5 +1,14 @@
 # dhruv-email-integration
-manages interaction with o365
+multi-tenant email read/send app
+
+#### Run app
+1. Install Python
+2. Install Poetry
+3. Clone this repo
+4. Copy the Configuration folder in top app folder
+5. Init poetry virtual env
+6. Run cmd `Poetry update`
+7. Run cmd `uvicorn app.main:app --workers 2 --port 9999`
 
 #### 1. give me list of email for a user between 2 dates
 - a. recevied - return ‘from email’, subject line’, ‘immutable_id’

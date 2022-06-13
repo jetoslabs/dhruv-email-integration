@@ -1,12 +1,26 @@
 # dhruv-email-integration
-manages interaction with o365
+multi-tenant email read/send app
 
-#### 1. give me list of email for a user between 2 dates
-- a. recevied - return ‘from email’, subject line’, ‘immutable_id’
-- b. sent
-#### 2. save email in correspondence table
-- columns - immutable id, bkg no, quote no, account code (which is client id), body, attachment
+### Run app
+1. Install Python
+2. Install Poetry (package manager for python)
+3. Clone this repo (`git clone git@github.com:jetoslabs/dhruv-email-integration.git`)
+4. Copy the Configuration folder in top app folder
+5. Init poetry virtual env, run cmd `poetry shell`
+6. Activate the shell (this step is usually included as part of `poetry shell` cmd)
+7. Install dependencies, run cmd `poetry update`
+8. Start application, run cmd `uvicorn app.main:app --workers 2 --port 9999`
+9. Check the app is running, by going to `http://127.0.0.1:9999/docs`
 
+### Functionality
+1. Read
+   1. list emails for a user between 2 dates
+      - a. recevied - return ‘from email’, subject line’, ‘immutable_id’
+      - b. sent
+   2. save email in correspondence table
+      - columns - immutable id, bkg no, quote no, account code (which is client id), body, attachment
+2. Send
+   1. Send email in behalf of a user
 
 # Developer Notes
 1. Have to manually match columns in `models` and `schema` package. 

@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "app"
 version = "0.1.0"
-description = "o365-manager"
+description = "o365-email-integration"
 authors = ["Manali Patil <mmpatil34@gmail.com>", "Anurag Jha <toanuragjha@gmail.com>"]
 
 [tool.poetry.dependencies]
